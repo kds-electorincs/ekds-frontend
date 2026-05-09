@@ -24,6 +24,13 @@ const trafficSources = [
 ];
 
 const COLORS = ['#243A5E', '#5F86A6', '#8FB6D8', '#CFE3F1'];
+  
+const topSellingProducts = [
+  { name: 'Wireless Headphones', category: 'Electronics', sales: 1240, revenue: '$148,800' },
+  { name: 'Ergonomic Office Chair', category: 'Furniture', sales: 850, revenue: '$296,650' },
+  { name: 'Minimalist Leather Watch', category: 'Accessories', sales: 620, revenue: '$80,290' },
+  { name: 'Smart Home Hub', category: 'Electronics', sales: 540, revenue: '$80,460' },
+];
 
 const DashboardAnalytics = () => {
   const theme = useTheme();
@@ -168,6 +175,37 @@ const DashboardAnalytics = () => {
                   <Area type="monotone" dataKey="visitors" name="Visitors" stroke={theme.palette.secondary.main} fillOpacity={1} fill="url(#colorVisitors)" />
                 </AreaChart>
               </ResponsiveContainer>
+            </Box>
+          </Paper>
+        </Box>
+        
+        {/* Top Selling Products */}
+        <Box sx={{ width: '100%', maxWidth: '1200px' }}>
+          <Paper sx={{ p: 4, height: '100%', borderRadius: 4, boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+              Top Selling Products
+            </Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
+                    <th style={{ padding: '12px 0', fontWeight: 600, color: theme.palette.text.secondary }}>Product Name</th>
+                    <th style={{ padding: '12px 0', fontWeight: 600, color: theme.palette.text.secondary }}>Category</th>
+                    <th style={{ padding: '12px 0', fontWeight: 600, color: theme.palette.text.secondary }}>Units Sold</th>
+                    <th style={{ padding: '12px 0', fontWeight: 600, color: theme.palette.text.secondary }}>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topSellingProducts.map((product, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <td style={{ padding: '16px 0', fontWeight: 600 }}>{product.name}</td>
+                      <td style={{ padding: '16px 0', color: theme.palette.text.secondary }}>{product.category}</td>
+                      <td style={{ padding: '16px 0' }}>{product.sales}</td>
+                      <td style={{ padding: '16px 0', fontWeight: 600, color: theme.palette.primary.main }}>{product.revenue}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </Box>
           </Paper>
         </Box>

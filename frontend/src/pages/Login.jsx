@@ -25,15 +25,21 @@ const Login = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await authService.login(data);
+      // Mock login to disconnect from backend
+      // const response = await authService.login(data);
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const response = { token: 'mock-jwt-token-for-ui-testing' };
       
       // Assuming your backend returns a token or user data on successful login
       if (response && response.token) {
         localStorage.setItem('token', response.token);
       }
       
-      notification.success('Login successful!');
-      navigate('/dashboard');
+      notification.success('Login successful (Mocked Mode)!');
+      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
       // Note: The global error handler in axiosInstance will automatically show toast errors

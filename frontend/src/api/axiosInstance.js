@@ -3,8 +3,8 @@ import notification from '../utils/notification'; // Reusing your existing notif
 
 // Create an Axios instance
 const axiosInstance = axios.create({
-  // Use Vite environment variable or fallback to localhost:8080 (IntelliJ/Spring Boot default)
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080', 
+  // Use Vite environment variable or fallback to localhost:8080/api (IntelliJ/Spring Boot default)
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api', 
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

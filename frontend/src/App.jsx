@@ -2,18 +2,20 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import PublicLayout from './layouts/PublicLayout';
-import DashboardLayout from './layouts/DashboardLayout';
+import DashboardLayout from './layouts/admin/DashboardLayout';
 import Home from './pages/Home';
-import DashboardHome from './pages/DashboardHome';
+import DashboardHome from './pages/admin/DashboardHome';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ProductListing from './pages/ProductListing';
 import ProductDetails from './pages/ProductDetails';
-import DashboardProducts from './pages/DashboardProducts';
-import DashboardOrders from './pages/DashboardOrders';
-import DashboardUsers from './pages/DashboardUsers';
-import DashboardAnalytics from './pages/DashboardAnalytics';
+import DashboardProducts from './pages/admin/DashboardProducts';
+import DashboardOrders from './pages/admin/DashboardOrders';
+import DashboardUsers from './pages/admin/DashboardUsers';
+import DashboardAnalytics from './pages/admin/DashboardAnalytics';
+import DashboardCategories from './pages/admin/DashboardCategories';
+import DashboardMedia from './pages/admin/DashboardMedia';
 
 function App() {
   return (
@@ -30,11 +32,14 @@ function App() {
         </Route>
 
         {/* Dashboard Routes */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<DashboardHome />} />
+        <Route path="/admin" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardHome />} />
+          <Route path="categories" element={<DashboardCategories />} />
           <Route path="products" element={<DashboardProducts />} />
           <Route path="orders" element={<DashboardOrders />} />
           <Route path="users" element={<DashboardUsers />} />
+          <Route path="media" element={<DashboardMedia />} />
           <Route path="analytics" element={<DashboardAnalytics />} />
         </Route>
 

@@ -7,7 +7,9 @@ import {
   ShoppingCart as ShoppingCartIcon,
   People as PeopleIcon,
   BarChart as BarChartIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  Category as CategoryIcon,
+  PhotoLibrary as PhotoLibraryIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom';
 
@@ -24,11 +26,13 @@ const DashboardLayout = () => {
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Products', icon: <InventoryIcon />, path: '/dashboard/products' },
-    { text: 'Orders', icon: <ShoppingCartIcon />, path: '/dashboard/orders' },
-    { text: 'Users', icon: <PeopleIcon />, path: '/dashboard/users' },
-    { text: 'Analytics', icon: <BarChartIcon />, path: '/dashboard/analytics' },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
+    { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories' },
+    { text: 'Products', icon: <InventoryIcon />, path: '/admin/products' },
+    { text: 'Orders', icon: <ShoppingCartIcon />, path: '/admin/orders' },
+    { text: 'Users', icon: <PeopleIcon />, path: '/admin/users' },
+    { text: 'Media CMS', icon: <PhotoLibraryIcon />, path: '/admin/media' },
+    { text: 'Analytics', icon: <BarChartIcon />, path: '/admin/analytics' },
   ];
 
   const drawer = (

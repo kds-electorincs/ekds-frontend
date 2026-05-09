@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Chip, IconButton, 
-  TextField, InputAdornment, Tooltip 
+  TextField, InputAdornment, Tooltip, Dialog, DialogTitle,
+  DialogContent, DialogActions, Stepper, Step, StepLabel, Grid, Divider
 } from '@mui/material';
 import { 
   Search as SearchIcon, Visibility as VisibilityIcon, 
-  FilterList as FilterListIcon 
+  FilterList as FilterListIcon,
+  LocalShipping as LocalShippingIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
@@ -30,6 +32,19 @@ const getStatusColor = (status) => {
 
 const DashboardOrders = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [openTrackModal, setOpenTrackModal] = useState(false);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const handleTrackClick = (order) => {
+    setSelectedOrder(order);
+    setOpenTrackModal(true);
+  };
+
+  const handleDetailsClick = (order) => {
+    setSelectedOrder(order);
+    setOpenDetailsModal(true);
+  };
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -102,8 +117,13 @@ const DashboardOrders = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
+                    <Tooltip title="Track Shipment / Workflow">
+                      <IconButton size="small" color="secondary" sx={{ mr: 1 }} onClick={() => handleTrackClick(row)}>
+                        <LocalShippingIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="View Order Details">
-                      <IconButton size="small" color="primary" onClick={() => toast.info(`Viewing details for order: ${row.id}`)}>
+                      <IconButton size="small" color="primary" onClick={() => handleDetailsClick(row)}>
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -114,6 +134,72 @@ const DashboardOrders = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Track Shipment Modal */}
+      <Dialog open={openTrackModal} onClose={() => setOpenTrackModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Track Shipment: {selectedOrder?.id}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ pt: 2, pb: 2 }}>
+            <Stepper activeStep={selectedOrder?.status === 'Delivered' ? 3 : selectedOrder?.status === 'Shipped' ? 2 : 1} alternativeLabel>
+              <Step><StepLabel>Order Placed</StepLabel></Step>
+              <Step><StepLabel>Processing</StepLabel></Step>
+              <Step><StepLabel>Shipped</StepLabel></Step>
+              <Step><StepLabel>Delivered</StepLabel></Step>
+            </Stepper>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, px: 3 }}>
+          <Button onClick={() => setOpenTrackModal(false)} color="primary" variant="contained">Close Tracking</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Order Details Modal */}
+      <Dialog open={openDetailsModal} onClose={() => setOpenDetailsModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Order Details: {selectedOrder?.id}</DialogTitle>
+        <DialogContent dividers>
+          {selectedOrder && (
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Customer Information</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedOrder.customer}</Typography>
+                <Typography variant="body2">{selectedOrder.email}</Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Order Information</Typography>
+                <Typography variant="body2"><strong>Date:</strong> {selectedOrder.date}</Typography>
+                <Typography variant="body2"><strong>Status:</strong> {selectedOrder.status}</Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Items ({selectedOrder.items})</Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell align="right">Price</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Sample Product</TableCell>
+                      <TableCell align="right">{selectedOrder.items}</TableCell>
+                      <TableCell align="right">{selectedOrder.total}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Total: {selectedOrder.total}</Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, px: 3 }}>
+          <Button onClick={() => setOpenDetailsModal(false)} color="inherit">Close</Button>
+          <Button variant="contained" color="primary">Download Invoice</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

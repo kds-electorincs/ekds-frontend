@@ -6,6 +6,7 @@ import * as yup from 'yup';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
 import notification from '../utils/notification';
+import { authService } from '../services/apiServices';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -21,16 +22,24 @@ const Login = () => {
     resolver: yupResolver(schema)
   });
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     setLoading(true);
-    console.log(data);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await authService.login(data);
+      
+      // Assuming your backend returns a token or user data on successful login
+      if (response && response.token) {
+        localStorage.setItem('token', response.token);
+      }
+      
       notification.success('Login successful!');
       navigate('/dashboard');
-    }, 1500);
+    } catch (error) {
+      console.error('Login failed:', error);
+      // Note: The global error handler in axiosInstance will automatically show toast errors
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

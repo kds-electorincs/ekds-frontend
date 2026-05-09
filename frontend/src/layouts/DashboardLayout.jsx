@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, IconButton, ListItem, ListItemButton, ListItemIcon, ListItemText, useTheme, useMediaQuery } from '@mui/material';
-import { 
-  Menu as MenuIcon, 
-  Dashboard as DashboardIcon, 
-  Inventory as InventoryIcon, 
-  ShoppingCart as ShoppingCartIcon, 
-  People as PeopleIcon, 
-  BarChart as BarChartIcon, 
-  Logout as LogoutIcon 
+import {
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  Inventory as InventoryIcon,
+  ShoppingCart as ShoppingCartIcon,
+  People as PeopleIcon,
+  BarChart as BarChartIcon,
+  Logout as LogoutIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom';
 
@@ -35,7 +35,7 @@ const DashboardLayout = () => {
     <div>
       <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main' }}>
-          ARCHANA
+          KDS
         </Typography>
       </Toolbar>
       <Divider />

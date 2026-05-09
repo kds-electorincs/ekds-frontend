@@ -14,7 +14,7 @@ const PublicLayout = () => {
       </Box>
       {/* Footer can be added here later */}
       <Box sx={{ py: 3, textAlign: 'center', backgroundColor: 'primary.main', color: 'white' }}>
-        &copy; {new Date().getFullYear()} Archana Inventory Management. All rights reserved.
+        &copy; {new Date().getFullYear()} KDS Inventory Management. All rights reserved.
       </Box>
     </Box>
   );

@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import PublicLayout from './layouts/PublicLayout';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -10,6 +10,10 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ProductListing from './pages/ProductListing';
 import ProductDetails from './pages/ProductDetails';
+import DashboardProducts from './pages/DashboardProducts';
+import DashboardOrders from './pages/DashboardOrders';
+import DashboardUsers from './pages/DashboardUsers';
+import DashboardAnalytics from './pages/DashboardAnalytics';
 
 function App() {
   return (
@@ -28,16 +32,28 @@ function App() {
         {/* Dashboard Routes */}
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
-          <Route path="products" element={<div>Manage Products (Coming Soon)</div>} />
-          <Route path="orders" element={<div>Manage Orders (Coming Soon)</div>} />
-          <Route path="users" element={<div>Manage Users (Coming Soon)</div>} />
-          <Route path="analytics" element={<div>Analytics (Coming Soon)</div>} />
+          <Route path="products" element={<DashboardProducts />} />
+          <Route path="orders" element={<DashboardOrders />} />
+          <Route path="users" element={<DashboardUsers />} />
+          <Route path="analytics" element={<DashboardAnalytics />} />
         </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <ToastContainer position="bottom-right" autoClose={3000} />
+      <ToastContainer 
+        position="bottom-right" 
+        autoClose={3000} 
+        transition={Slide}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </>
   );
 }

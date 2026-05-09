@@ -22,7 +22,7 @@ const Navbar = () => {
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center', width: 250 }}>
       <Typography variant="h6" sx={{ my: 2, color: 'primary.main', fontWeight: 'bold' }}>
-        ARCHANA
+        KDS
       </Typography>
       <List>
         {navItems.map((item) => (
@@ -55,7 +55,7 @@ const Navbar = () => {
               letterSpacing: 1,
             }}
           >
-            ARCHANA
+            KDS
           </Typography>
 
           {isMobile ? (

@@ -5,6 +5,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import notification from '../utils/notification';
+import { authService } from '../services/apiServices';
 
 const schema = yup.object({
   fullName: yup.string().required('Full Name is required'),
@@ -37,15 +38,20 @@ const Register = () => {
     }
   };
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     setLoading(true);
-    console.log({ ...data, type: regType });
-    
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const payload = { ...data, type: regType };
+      await authService.register(payload);
+      
       notification.success('Registration successful! Please login.');
       navigate('/login');
-    }, 1500);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      // Note: The global error handler in axiosInstance will automatically show toast errors
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

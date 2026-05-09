@@ -7,7 +7,7 @@ const Home = () => {
     <Box>
       <Box sx={{ textAlign: 'center', py: 8 }}>
         <Typography variant="h2" component="h1" gutterBottom sx={{ color: 'primary.main', fontWeight: 800 }}>
-          B2B Inventory Management
+          KDS B2B Inventory Management
         </Typography>
         <Typography variant="h5" color="text.secondary" paragraph sx={{ mb: 4, maxWidth: 800, mx: 'auto' }}>
           Streamline your wholesale operations with our advanced inventory and e-commerce system. Manage products, track orders, and grow your business with ARCHANA.

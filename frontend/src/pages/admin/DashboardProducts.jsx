@@ -5,23 +5,19 @@ import {
   TextField, InputAdornment, Avatar, Tooltip, Dialog, DialogTitle,
   DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
-import { 
-  Add as AddIcon, Search as SearchIcon, 
-  Edit as EditIcon, Delete as DeleteIcon, 
-  FilterList as FilterListIcon,
-  FileUpload as FileUploadIcon,
-  PriceChange as PriceChangeIcon
-} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import PriceChangeIcon from '@mui/icons-material/PriceChange';
 import { toast } from 'react-toastify';
 import { convertToWebP } from '../../utils/imageUtils';
 
-const initialProducts = [
-  { id: 1, name: 'Wireless Noise-Cancelling Headphones', sku: 'AUDIO-001', category: 'Electronics', price: '$299.99', stock: 45, status: 'In Stock', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80' },
-  { id: 2, name: 'Minimalist Leather Watch', sku: 'ACC-042', category: 'Accessories', price: '$129.50', stock: 12, status: 'Low Stock', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&q=80' },
-  { id: 3, name: 'Smart Home Security Camera', sku: 'SMART-105', category: 'Electronics', price: '$149.00', stock: 0, status: 'Out of Stock', image: 'https://images.unsplash.com/photo-1557825835-b453e9df2c21?w=100&q=80' },
-  { id: 4, name: 'Ergonomic Office Chair', sku: 'FURN-018', category: 'Furniture', price: '$349.00', stock: 24, status: 'In Stock', image: 'https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?w=100&q=80' },
-  { id: 5, name: 'Mechanical Gaming Keyboard', sku: 'GAM-007', category: 'Electronics', price: '$159.99', stock: 8, status: 'Low Stock', image: 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=100&q=80' },
-];
+import { useEffect } from 'react';
+import { productAdminService, categoryAdminService } from '../../services/apiServices';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -33,21 +29,159 @@ const getStatusColor = (status) => {
 };
 
 const DashboardProducts = () => {
+  const navigate = useNavigate();
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  
+  const fetchData = async (categoryIdToFetch = null) => {
+    setLoading(true);
+    try {
+      // 1. Fetch categories first
+      const catRes = await categoryAdminService.listCategories({ page: 0, size: 50 });
+      const fetchedCategories = catRes.data?.content || catRes.content || [];
+      setCategories(fetchedCategories);
+
+      if (fetchedCategories.length > 0) {
+        // 2. Figure out which category to load
+        const targetCategoryId = categoryIdToFetch || selectedCategoryId || fetchedCategories[0].id;
+        if (!selectedCategoryId) setSelectedCategoryId(targetCategoryId);
+
+        // 3. Fetch products ONLY for that specific category
+        const prodRes = await productAdminService.listProducts({ 
+          page: 0, 
+          size: 50, 
+          categoryId: targetCategoryId 
+        });
+        
+        const rawProducts = prodRes.data?.content || prodRes.content || [];
+        
+        // Map products so the table doesn't break missing fields (price, image)
+        const mappedProducts = rawProducts.map(p => ({
+          ...p,
+          price: 'N/A', // Will be updated when price breaks are added
+          stock: p.totalStock || 0,
+          image: p.images?.[0]?.url || ''
+        }));
+        
+        setProducts(mappedProducts);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data', error);
+      toast.error('Failed to load real data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
   const [openAddModal, setOpenAddModal] = useState(false);
   const [openBulkPriceModal, setOpenBulkPriceModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  // Form States
+  const [addForm, setAddForm] = useState({ name: '', sku: '', price: '', category: 'Electronics', stock: '' });
+  const [editForm, setEditForm] = useState({ name: '', sku: '', price: '', category: 'Electronics', stock: '' });
+  const [bulkCategory, setBulkCategory] = useState('All');
+  const [bulkPercentage, setBulkPercentage] = useState('');
+
+  // Search filter
+  const filteredProducts = products.filter((row) => {
+    const term = searchTerm.toLowerCase();
+    return row.name.toLowerCase().includes(term) || row.sku.toLowerCase().includes(term);
+  });
+
+  const handleAddProduct = async () => {
+    if (!addForm.name || !addForm.sku || !addForm.category) {
+      toast.error('Please fill in Name, SKU, and Category');
+      return;
+    }
+    
+    try {
+      // Send real request to backend
+      const payload = {
+        name: addForm.name,
+        mpn: addForm.sku,
+        categoryId: parseInt(addForm.category),
+        manufacturer: "Default",
+        description: "",
+        restockLeadDays: 0,
+        specs: {},
+        meta: { hiddenSegments: [], hiddenAttributes: [] },
+        packagingOptions: [],
+        images: []
+      };
+      await productAdminService.createProduct(payload);
+      toast.success('Product added successfully!');
+      setOpenAddModal(false);
+      setAddForm({ name: '', sku: '', price: '', category: '', stock: '' });
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to add product');
+    }
+  };
+
   const handleEditClick = (product) => {
-    setSelectedProduct(product);
-    setOpenEditModal(true);
+    navigate(`/admin/products/${product.id}`);
+  };
+
+  const handleUpdateProduct = () => {
+    if (!editForm.name || !editForm.sku || !editForm.price) {
+      toast.error('Please fill in Name, SKU, and Price');
+      return;
+    }
+    setProducts(prev => prev.map(p => {
+      if (p.id === selectedProduct.id) {
+        const stockVal = parseInt(editForm.stock) || 0;
+        return {
+          ...p,
+          name: editForm.name,
+          sku: editForm.sku,
+          category: editForm.category,
+          price: `$${parseFloat(editForm.price).toFixed(2)}`,
+          stock: stockVal,
+          status: stockVal > 15 ? 'In Stock' : (stockVal > 0 ? 'Low Stock' : 'Out of Stock')
+        };
+      }
+      return p;
+    }));
+    setOpenEditModal(false);
+    toast.success('Product updated successfully!');
   };
 
   const handleDeleteClick = (product) => {
     setSelectedProduct(product);
     setOpenDeleteModal(true);
+  };
+
+  const handleDeleteProduct = async () => {
+    try {
+      await productAdminService.deleteProduct(selectedProduct.id);
+      toast.success('Product deleted!');
+      setOpenDeleteModal(false);
+      fetchData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Product deletion failed.';
+      toast.error(msg);
+    }
+  };
+
+  const handleBulkPriceUpdate = () => {
+    toast.error('Bulk Price Update endpoint is currently missing.');
+    setOpenBulkPriceModal(false);
+  };
+
+  const handleCSVUpload = (e) => {
+    toast.error('CSV Upload endpoint is currently missing.');
   };
 
   return (
@@ -82,12 +216,8 @@ const DashboardProducts = () => {
             <input
               type="file"
               hidden
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  toast.success(`Selected file: ${e.target.files[0].name}`);
-                }
-              }}
+              accept=".csv"
+              onChange={handleCSVUpload}
             />
           </Button>
           <Button 
@@ -134,31 +264,37 @@ const DashboardProducts = () => {
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Product</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>SKU</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Category</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Manufacturer</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Price</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Stock</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Created Date</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Updated Date</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {initialProducts.map((row) => (
+              {filteredProducts.map((row) => (
                 <TableRow key={row.id} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                   <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Avatar variant="rounded" src={row.image} alt={row.name} sx={{ width: 48, height: 48 }} />
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.name}</Typography>
                   </TableCell>
-                  <TableCell sx={{ color: 'text.secondary' }}>{row.sku}</TableCell>
-                  <TableCell>{row.category}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{row.price}</TableCell>
-                  <TableCell>{row.stock}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary' }}>{row.mpn || row.sku}</TableCell>
+                  <TableCell>{categories.find(c => c.id === row.categoryId)?.name || row.category}</TableCell>
+                  <TableCell>{row.manufacturer || 'N/A'}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{row.price || 'N/A'}</TableCell>
+                  <TableCell>{row.totalStock || row.stock || 0}</TableCell>
                   <TableCell>
                     <Chip 
-                      label={row.status} 
-                      color={getStatusColor(row.status)}
+                      label={row.active !== false ? 'Active' : 'Inactive'} 
+                      color={row.active !== false ? 'success' : 'default'}
                       size="small"
                       sx={{ fontWeight: 600, borderRadius: 1.5, px: 1 }}
                     />
                   </TableCell>
+                  <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell>{row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : 'N/A'}</TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit Product">
                       <IconButton size="small" color="primary" sx={{ mr: 1 }} onClick={() => handleEditClick(row)}>
@@ -173,6 +309,15 @@ const DashboardProducts = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredProducts.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No data found
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -183,21 +328,51 @@ const DashboardProducts = () => {
         <DialogTitle sx={{ fontWeight: 700 }}>Add New Product</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-            <TextField fullWidth label="Product Name" variant="outlined" />
+            <TextField 
+              fullWidth 
+              label="Product Name" 
+              variant="outlined" 
+              value={addForm.name} 
+              onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} 
+            />
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField fullWidth label="SKU" variant="outlined" />
-              <TextField fullWidth label="Price ($)" variant="outlined" type="number" />
+              <TextField 
+                fullWidth 
+                label="SKU" 
+                variant="outlined" 
+                value={addForm.sku} 
+                onChange={(e) => setAddForm({ ...addForm, sku: e.target.value })} 
+              />
+              <TextField 
+                fullWidth 
+                label="Price ($)" 
+                variant="outlined" 
+                type="number" 
+                value={addForm.price} 
+                onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} 
+              />
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <FormControl fullWidth>
                 <InputLabel>Category</InputLabel>
-                <Select label="Category" defaultValue="Electronics">
-                  <MenuItem value="Electronics">Electronics</MenuItem>
-                  <MenuItem value="Furniture">Furniture</MenuItem>
-                  <MenuItem value="Accessories">Accessories</MenuItem>
+                <Select 
+                  label="Category" 
+                  value={addForm.category} 
+                  onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
+                >
+                  {categories.map(cat => (
+                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
-              <TextField fullWidth label="Initial Stock" variant="outlined" type="number" />
+              <TextField 
+                fullWidth 
+                label="Initial Stock" 
+                variant="outlined" 
+                type="number" 
+                value={addForm.stock} 
+                onChange={(e) => setAddForm({ ...addForm, stock: e.target.value })} 
+              />
             </Box>
             <Button variant="outlined" component="label">
               Upload Product Image
@@ -223,10 +398,7 @@ const DashboardProducts = () => {
         <DialogActions sx={{ p: 2, px: 3 }}>
           <Button onClick={() => setOpenAddModal(false)} color="inherit">Cancel</Button>
           <Button 
-            onClick={() => {
-              toast.success('Product added successfully!');
-              setOpenAddModal(false);
-            }} 
+            onClick={handleAddProduct} 
             variant="contained"
           >
             Save Product
@@ -244,22 +416,32 @@ const DashboardProducts = () => {
             </Typography>
             <FormControl fullWidth>
               <InputLabel>Target Category</InputLabel>
-              <Select label="Target Category" defaultValue="All">
+              <Select 
+                label="Target Category" 
+                value={bulkCategory} 
+                onChange={(e) => setBulkCategory(e.target.value)}
+              >
                 <MenuItem value="All">All Categories</MenuItem>
-                <MenuItem value="Electronics">Electronics</MenuItem>
-                <MenuItem value="Furniture">Furniture</MenuItem>
+                {categories.map(cat => (
+                  <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                ))}
               </Select>
             </FormControl>
-            <TextField fullWidth label="Percentage (%)" variant="outlined" type="number" placeholder="e.g. 5 or -10" />
+            <TextField 
+              fullWidth 
+              label="Percentage (%)" 
+              variant="outlined" 
+              type="number" 
+              placeholder="e.g. 5 or -10" 
+              value={bulkPercentage} 
+              onChange={(e) => setBulkPercentage(e.target.value)} 
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2, px: 3 }}>
           <Button onClick={() => setOpenBulkPriceModal(false)} color="inherit">Cancel</Button>
           <Button 
-            onClick={() => {
-              toast.success('Prices updated successfully!');
-              setOpenBulkPriceModal(false);
-            }} 
+            onClick={handleBulkPriceUpdate} 
             variant="contained"
           >
             Apply Changes
@@ -273,21 +455,51 @@ const DashboardProducts = () => {
         <DialogContent dividers>
           {selectedProduct && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-              <TextField fullWidth label="Product Name" variant="outlined" defaultValue={selectedProduct.name} />
+              <TextField 
+                fullWidth 
+                label="Product Name" 
+                variant="outlined" 
+                value={editForm.name} 
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} 
+              />
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField fullWidth label="SKU" variant="outlined" defaultValue={selectedProduct.sku} />
-                <TextField fullWidth label="Price" variant="outlined" defaultValue={selectedProduct.price.replace('$', '')} type="number" />
+                <TextField 
+                  fullWidth 
+                  label="SKU" 
+                  variant="outlined" 
+                  value={editForm.sku} 
+                  onChange={(e) => setEditForm({ ...editForm, sku: e.target.value })} 
+                />
+                <TextField 
+                  fullWidth 
+                  label="Price" 
+                  variant="outlined" 
+                  type="number" 
+                  value={editForm.price} 
+                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} 
+                />
               </Box>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <FormControl fullWidth>
                   <InputLabel>Category</InputLabel>
-                  <Select label="Category" defaultValue={selectedProduct.category}>
-                    <MenuItem value="Electronics">Electronics</MenuItem>
-                    <MenuItem value="Furniture">Furniture</MenuItem>
-                    <MenuItem value="Accessories">Accessories</MenuItem>
+                  <Select 
+                    label="Category" 
+                    value={editForm.category} 
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  >
+                  {categories.map(cat => (
+                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                  ))}
                   </Select>
                 </FormControl>
-                <TextField fullWidth label="Stock" variant="outlined" type="number" defaultValue={selectedProduct.stock} />
+                <TextField 
+                  fullWidth 
+                  label="Stock" 
+                  variant="outlined" 
+                  type="number" 
+                  value={editForm.stock} 
+                  onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} 
+                />
               </Box>
             </Box>
           )}
@@ -295,10 +507,7 @@ const DashboardProducts = () => {
         <DialogActions sx={{ p: 2, px: 3 }}>
           <Button onClick={() => setOpenEditModal(false)} color="inherit">Cancel</Button>
           <Button 
-            onClick={() => {
-              toast.success('Product updated successfully!');
-              setOpenEditModal(false);
-            }} 
+            onClick={handleUpdateProduct} 
             variant="contained"
           >
             Update Product
@@ -308,19 +517,20 @@ const DashboardProducts = () => {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={openDeleteModal} onClose={() => setOpenDeleteModal(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Confirm Delete</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Delete Product</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{selectedProduct?.name}</strong>? This action cannot be undone.
+            Are you sure you want to delete this product?
+            <br/><br/>
+            SKU: {selectedProduct?.mpn || selectedProduct?.sku}
+            <br/><br/>
+            This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2, px: 3 }}>
           <Button onClick={() => setOpenDeleteModal(false)} color="inherit">Cancel</Button>
           <Button 
-            onClick={() => {
-              toast.error('Product deleted!');
-              setOpenDeleteModal(false);
-            }} 
+            onClick={handleDeleteProduct} 
             variant="contained"
             color="error"
           >

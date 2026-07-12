@@ -17,6 +17,7 @@ const useS3Upload = () => {
       const presignData = await uploadAdminService.presignUrl({
         purpose,
         contentType: file.type,
+        file_size: file.size,
       });
       
       const { uploadUrl, objectKey } = presignData;

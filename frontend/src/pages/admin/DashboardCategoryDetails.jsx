@@ -22,7 +22,6 @@ import ImageUpload from '../../components/admin/ImageUpload';
 const categorySchema = yup.object().shape({
   name: yup.string().required('Name is required').max(120, 'Max 120 characters'),
   slug: yup.string().max(140, 'Max 140 characters').nullable().transform((v) => v === '' ? null : v),
-  heroImageKey: yup.string().max(512).nullable(),
   active: yup.boolean()
 });
 
@@ -125,10 +124,19 @@ const DashboardCategoryDetails = () => {
     resetEditCatForm({
       name: category.name,
       slug: category.slug,
-      heroImageKey: category.heroImageKey,
       active: category.active
     });
     setOpenEditCatModal(true);
+  };
+
+  const handleHeroImageUpload = async (objectKey) => {
+    try {
+      await categoryAdminService.updateCategory(id, { heroImageKey: objectKey || null });
+      toast.success(objectKey ? 'Hero image updated successfully!' : 'Hero image removed!');
+      fetchCategory();
+    } catch (err) {
+      toast.error('Failed to update category hero image');
+    }
   };
 
   // --- Segment Handlers ---
@@ -231,14 +239,13 @@ const DashboardCategoryDetails = () => {
 
       {/* Overview Cards */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 2fr' }, gap: 3, mb: 4 }}>
-        <Paper sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          {category.heroImageKey ? (
-            <img src={`${CDN_BASE}/${category.heroImageKey}`} alt={category.name} style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 }} />
-          ) : (
-            <Box sx={{ width: '100%', height: 200, bgcolor: 'action.hover', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Typography variant="body1" color="text.secondary">No Hero Image</Typography>
-            </Box>
-          )}
+        <Paper sx={{ p: 3, borderRadius: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Hero Image</Typography>
+          <ImageUpload 
+            value={category.heroImageKey} 
+            onChange={handleHeroImageUpload} 
+            purpose="CATEGORY_HERO"
+          />
         </Paper>
         <Paper sx={{ p: 3, borderRadius: 4 }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Category Details</Typography>
@@ -387,12 +394,6 @@ const DashboardCategoryDetails = () => {
             <Controller name="slug" control={editCatControl} render={({ field }) => (
                 <TextField {...field} fullWidth label="Slug" variant="outlined" error={!!editCatErrors.slug} helperText={editCatErrors.slug?.message} />
             )} />
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Hero Image</Typography>
-              <Controller name="heroImageKey" control={editCatControl} render={({ field }) => (
-                  <ImageUpload value={field.value} onChange={field.onChange} error={!!editCatErrors.heroImageKey} helperText={editCatErrors.heroImageKey?.message} />
-              )} />
-            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 2, px: 3 }}>
             <Button onClick={() => setOpenEditCatModal(false)} disabled={isEditingCat}>Cancel</Button>
@@ -438,6 +439,7 @@ const DashboardCategoryDetails = () => {
                     <MenuItem value="NUMBER">NUMBER</MenuItem>
                     <MenuItem value="BOOLEAN">BOOLEAN</MenuItem>
                     <MenuItem value="ENUM">ENUM</MenuItem>
+                    <MenuItem value="FILE">FILE</MenuItem>
                   </TextField>
               )} />
             </Box>

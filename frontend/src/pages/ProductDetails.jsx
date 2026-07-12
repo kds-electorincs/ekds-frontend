@@ -33,9 +33,9 @@ const ProductDetails = () => {
         setCategory(cat);
 
         // Save to recently viewed
-        const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        const recentlyViewed = JSON.parse(sessionStorage.getItem('recentlyViewed') || '[]');
         const updated = [prod.id, ...recentlyViewed.filter(pId => pId !== prod.id)].slice(0, 5);
-        localStorage.setItem('recentlyViewed', JSON.stringify(updated));
+        sessionStorage.setItem('recentlyViewed', JSON.stringify(updated));
       } catch (err) {
         console.error(err);
         setError(true);

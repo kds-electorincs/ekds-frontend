@@ -116,7 +116,6 @@ const DashboardCategories = () => {
       const payload = {
         name: data.name,
         slug: data.slug,
-        heroImageKey: data.heroImageKey,
       };
       await categoryAdminService.updateCategory(selectedCategory.id, payload);
       toast.success('Category updated successfully!');
@@ -247,7 +246,7 @@ const DashboardCategories = () => {
                       <Tooltip title="Edit Category">
                         <IconButton size="small" color="secondary" onClick={() => {
                           setSelectedCategory(row);
-                          resetEditForm({ name: row.name, slug: row.slug, heroImageKey: row.heroImageKey });
+                          resetEditForm({ name: row.name, slug: row.slug });
                           setOpenEditModal(true);
                         }}>
                           <EditIcon fontSize="small" />
@@ -385,22 +384,6 @@ const DashboardCategories = () => {
                 />
               )}
             />
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Hero Image</Typography>
-              <Controller
-                name="heroImageKey"
-                control={editControl}
-                render={({ field }) => (
-                  <ImageUpload 
-                    value={field.value} 
-                    onChange={field.onChange} 
-                    error={!!editErrors.heroImageKey}
-                    helperText={editErrors.heroImageKey?.message}
-                    purpose="CATEGORY_HERO"
-                  />
-                )}
-              />
-            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 2, px: 3 }}>
             <Button onClick={() => setOpenEditModal(false)} color="inherit" disabled={isEditing}>Cancel</Button>

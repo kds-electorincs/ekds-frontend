@@ -9,7 +9,7 @@ export const authService = {
   forgotPassword: async (email) => await axiosInstance.post('/auth/forgot-password', { email }),
   resetPassword: async (token, newPassword) => await axiosInstance.post('/auth/reset-password', { token, newPassword }),
   logout: () => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     // window.location.href = '/login'; 
   }
 };

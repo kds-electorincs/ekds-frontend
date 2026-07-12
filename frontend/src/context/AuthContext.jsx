@@ -18,12 +18,12 @@ export const AuthProvider = ({ children }) => {
 
   const silentRefresh = async () => {
     try {
-      const storedRefreshToken = localStorage.getItem('refreshToken');
+      const storedRefreshToken = sessionStorage.getItem('refreshToken');
       if (!storedRefreshToken) throw new Error("No refresh token");
       const response = await axiosClient.post('/auth/refresh', { refreshToken: storedRefreshToken });
       setAccessToken(response.accessToken);
       if (response.refreshToken) {
-        localStorage.setItem('refreshToken', response.refreshToken);
+        sessionStorage.setItem('refreshToken', response.refreshToken);
       }
       let userData = response.user;
       if (!userData) {
@@ -48,15 +48,15 @@ export const AuthProvider = ({ children }) => {
       }
 
       setUser(userData);
-      localStorage.setItem('token', response.accessToken);
-      localStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.setItem('token', response.accessToken);
+      sessionStorage.setItem('user', JSON.stringify(userData));
     } catch (err) {
       console.error('Silent refresh failed:', err.message);
       setAccessToken(null);
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('user');
     } finally {
       setLoading(false);
     }
@@ -70,9 +70,9 @@ export const AuthProvider = ({ children }) => {
     const handleAuthExpired = () => {
       setAccessToken(null);
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('user');
       toast.error('Session expired. Please log in again.');
     };
 
@@ -117,11 +117,11 @@ export const AuthProvider = ({ children }) => {
       }
 
       setUser(userData);
-      localStorage.setItem('token', response.accessToken);
+      sessionStorage.setItem('token', response.accessToken);
       if (response.refreshToken) {
-        localStorage.setItem('refreshToken', response.refreshToken);
+        sessionStorage.setItem('refreshToken', response.refreshToken);
       }
-      localStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.setItem('user', JSON.stringify(userData));
       toast.success(`Welcome back, ${userData?.name || userData?.fullName || 'User'}`);
       return userData;
     } catch (error) {
@@ -132,16 +132,16 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      const storedRefreshToken = localStorage.getItem('refreshToken');
+      const storedRefreshToken = sessionStorage.getItem('refreshToken');
       await axiosClient.post('/auth/logout', { refreshToken: storedRefreshToken });
     } catch (e) {
       console.warn('Backend logout invalidation failed');
     } finally {
       setAccessToken(null);
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('user');
       toast.info('Logged out successfully.');
     }
   };

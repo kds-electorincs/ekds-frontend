@@ -9,7 +9,7 @@ import {
   Image as ImageIcon 
 } from '@mui/icons-material';
 import useS3Upload from '../../hooks/useS3Upload';
-import { toast } from 'react-toastify';
+import { validateUploadFile } from '../../utils/uploadValidation';
 
 const ImageUpload = ({ 
   value, // The S3 objectKey if it exists
@@ -20,6 +20,7 @@ const ImageUpload = ({
 }) => {
   const { uploadFile, isUploading, uploadProgress } = useS3Upload();
   const [preview, setPreview] = useState(null);
+  const [localError, setLocalError] = useState('');
 
   // If we already have a value (S3 key), we should display it.
   // We use the CDN base from env variables to build the full URL.
@@ -33,33 +34,47 @@ const ImageUpload = ({
     }
   }, [value, CDN_BASE]);
 
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
+  const processFile = async (file, eventTarget) => {
     if (!file) return;
 
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      toast.error('Invalid file type. Only JPEG, PNG, and WebP are allowed.');
+    const validationError = validateUploadFile(file, 'image');
+    if (validationError) {
+      setLocalError(validationError);
+      if (eventTarget) eventTarget.value = '';
       return;
     }
 
-    // Set a local preview immediately for better UX
+    setLocalError('');
     const localPreviewUrl = URL.createObjectURL(file);
     setPreview(localPreviewUrl);
 
     try {
       const objectKey = await uploadFile(file, purpose);
       onChange(objectKey);
+      URL.revokeObjectURL(localPreviewUrl);
     } catch (err) {
-      // Revert preview on failure
       if (value) {
         setPreview(`${CDN_BASE}/${value}`);
       } else {
         setPreview(null);
       }
-      toast.error(err.message || 'Image upload failed');
+      setLocalError(err.message || 'Image upload failed');
+      if (eventTarget) eventTarget.value = '';
     }
+  };
+
+  const handleFileChange = (event) => {
+    processFile(event.target.files[0], event.target);
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    if (isUploading) return;
+    processFile(event.dataTransfer.files[0], null);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
   };
 
   const handleRemove = () => {
@@ -72,7 +87,7 @@ const ImageUpload = ({
       <Box
         sx={{
           border: '2px dashed',
-          borderColor: error ? 'error.main' : (isUploading ? 'primary.main' : 'divider'),
+          borderColor: (error || localError) ? 'error.main' : (isUploading ? 'primary.main' : 'divider'),
           borderRadius: 2,
           p: 3,
           textAlign: 'center',
@@ -91,6 +106,8 @@ const ImageUpload = ({
           minHeight: 200,
         }}
         component="label"
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
       >
         <input
           type="file"
@@ -139,14 +156,14 @@ const ImageUpload = ({
               Click or drag to upload
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              SVG, PNG, JPG or GIF (max. 3MB)
+              Accepted formats: JPEG, PNG, WebP · Max size: 2 MB
             </Typography>
           </Box>
         )}
       </Box>
-      {(error || helperText) && (
-        <FormHelperText error={!!error} sx={{ mt: 1 }}>
-          {error || helperText}
+      {(error || localError || helperText) && (
+        <FormHelperText error={!!(error || localError)} sx={{ mt: 1 }}>
+          {localError || error || helperText}
         </FormHelperText>
       )}
     </Box>

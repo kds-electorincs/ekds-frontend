@@ -14,10 +14,39 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import PriceChangeIcon from '@mui/icons-material/PriceChange';
 import { toast } from 'react-toastify';
-import { convertToWebP } from '../../utils/imageUtils';
+import { validateUploadFile } from '../../utils/uploadValidation';
 
 import { useEffect } from 'react';
-import { productAdminService, categoryAdminService } from '../../services/apiServices';
+import { productAdminService, categoryAdminService, configAdminService } from '../../services/apiServices';
+
+const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+
+const getPrimaryImageUrl = (row) => {
+  if (row.images && row.images.length > 0) {
+    const primary = row.images.find(i => i.isPrimary) || row.images[0];
+    return primary.url || `${CDN_BASE}/${primary.objectKey}`;
+  }
+  return '';
+};
+
+const getStartingPrice = (row) => {
+  if (row.packagingOptions && row.packagingOptions.length > 0) {
+    let lowest = Infinity;
+    let curr = 'USD';
+    row.packagingOptions.forEach(pkg => {
+      (pkg.priceBreaks || []).forEach(pb => {
+         if (pb.unitPriceMinor < lowest) {
+            lowest = pb.unitPriceMinor;
+            curr = pb.currency;
+         }
+      });
+    });
+    if (lowest !== Infinity) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(lowest / 100);
+    }
+  }
+  return 'N/A';
+};
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -32,6 +61,8 @@ const DashboardProducts = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [packagingTypes, setPackagingTypes] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -39,10 +70,16 @@ const DashboardProducts = () => {
   const fetchData = async (categoryIdToFetch = null) => {
     setLoading(true);
     try {
-      // 1. Fetch categories first
-      const catRes = await categoryAdminService.listCategories({ page: 0, size: 50 });
+      // 1. Fetch categories, packaging types, and currencies first
+      const [catRes, pkgRes, currRes] = await Promise.all([
+        categoryAdminService.listCategories({ page: 0, size: 50 }),
+        configAdminService.getPackagingTypes(),
+        configAdminService.getCurrencies()
+      ]);
       const fetchedCategories = catRes.data?.content || catRes.content || [];
       setCategories(fetchedCategories);
+      setPackagingTypes(pkgRes.data || pkgRes || []);
+      setCurrencies(currRes.data || currRes || []);
 
       if (fetchedCategories.length > 0) {
         // 2. Figure out which category to load
@@ -59,14 +96,50 @@ const DashboardProducts = () => {
         const rawProducts = prodRes.data?.content || prodRes.content || [];
         
         // Map products so the table doesn't break missing fields (price, image)
-        const mappedProducts = rawProducts.map(p => ({
-          ...p,
-          price: 'N/A', // Will be updated when price breaks are added
-          stock: p.totalStock || 0,
-          image: p.images?.[0]?.url || ''
-        }));
+        const mappedProducts = rawProducts.map(p => {
+          let priceDisplay = '0.00';
+          if (p.packagingOptions && p.packagingOptions.length > 0) {
+            const firstPkg = p.packagingOptions[0];
+            if (firstPkg.priceBreaks && firstPkg.priceBreaks.length > 0) {
+              const firstBreak = firstPkg.priceBreaks[0];
+              const priceDecimal = (firstBreak.unitPriceMinor / 100).toFixed(2);
+              priceDisplay = `${firstBreak.currency} ${priceDecimal}`;
+            }
+          }
+          
+          return {
+            ...p,
+            price: priceDisplay,
+            stock: p.totalStock || 0,
+            image: p.images?.[0]?.url || ''
+          };
+        });
         
         setProducts(mappedProducts);
+
+        // --- DEMO WORKAROUND (N+1 ANTI-PATTERN) ---
+        // Since the backend's ProductSummaryResponse does not include pricing or images,
+        // we'll fetch them individually in the background so the table looks complete for the demo.
+        Promise.all(mappedProducts.map(async (p) => {
+          try {
+            const detailRes = await productAdminService.getProduct(p.id);
+            const detailed = detailRes.data || detailRes;
+            setProducts(prev => prev.map(oldP => {
+              if (oldP.id === p.id) {
+                return {
+                  ...oldP,
+                  packagingOptions: detailed.packagingOptions || [],
+                  images: detailed.images || [],
+                  updatedAt: detailed.updatedAt || oldP.updatedAt
+                };
+              }
+              return oldP;
+            }));
+          } catch (err) {
+            console.error(`Failed to fetch details for product ${p.id}`, err);
+          }
+        }));
+
       } else {
         setProducts([]);
       }
@@ -84,13 +157,11 @@ const DashboardProducts = () => {
   
   const [openAddModal, setOpenAddModal] = useState(false);
   const [openBulkPriceModal, setOpenBulkPriceModal] = useState(false);
-  const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Form States
-  const [addForm, setAddForm] = useState({ name: '', sku: '', price: '', category: 'Electronics', stock: '' });
-  const [editForm, setEditForm] = useState({ name: '', sku: '', price: '', category: 'Electronics', stock: '' });
+  const [addForm, setAddForm] = useState({ name: '', sku: '', price: '', category: 'Electronics', stock: '', packType: '', currency: '', imageFile: null });
+  const [addImgError, setAddImgError] = useState('');
   const [bulkCategory, setBulkCategory] = useState('All');
   const [bulkPercentage, setBulkPercentage] = useState('');
 
@@ -101,8 +172,8 @@ const DashboardProducts = () => {
   });
 
   const handleAddProduct = async () => {
-    if (!addForm.name || !addForm.sku || !addForm.category) {
-      toast.error('Please fill in Name, SKU, and Category');
+    if (!addForm.name || !addForm.sku || !addForm.category || !addForm.packType || !addForm.currency || !addForm.price) {
+      toast.error('Please fill in Name, SKU, Category, Price, Pack Type, and Currency');
       return;
     }
     
@@ -117,13 +188,25 @@ const DashboardProducts = () => {
         restockLeadDays: 0,
         specs: {},
         meta: { hiddenSegments: [], hiddenAttributes: [] },
-        packagingOptions: [],
+        packagingOptions: [
+          {
+            packagingType: addForm.packType,
+            currentQuantity: parseInt(addForm.stock) || 0,
+            priceBreaks: [
+              {
+                currency: addForm.currency,
+                minQuantity: 1,
+                unitPriceMinor: Math.round(parseFloat(addForm.price) * 100)
+              }
+            ]
+          }
+        ],
         images: []
       };
       await productAdminService.createProduct(payload);
       toast.success('Product added successfully!');
       setOpenAddModal(false);
-      setAddForm({ name: '', sku: '', price: '', category: '', stock: '' });
+      setAddForm({ name: '', sku: '', price: '', category: '', stock: '', packType: '', currency: '' });
       fetchData();
     } catch (err) {
       toast.error('Failed to add product');
@@ -133,31 +216,6 @@ const DashboardProducts = () => {
   const handleEditClick = (product) => {
     navigate(`/admin/products/${product.id}`);
   };
-
-  const handleUpdateProduct = () => {
-    if (!editForm.name || !editForm.sku || !editForm.price) {
-      toast.error('Please fill in Name, SKU, and Price');
-      return;
-    }
-    setProducts(prev => prev.map(p => {
-      if (p.id === selectedProduct.id) {
-        const stockVal = parseInt(editForm.stock) || 0;
-        return {
-          ...p,
-          name: editForm.name,
-          sku: editForm.sku,
-          category: editForm.category,
-          price: `$${parseFloat(editForm.price).toFixed(2)}`,
-          stock: stockVal,
-          status: stockVal > 15 ? 'In Stock' : (stockVal > 0 ? 'Low Stock' : 'Out of Stock')
-        };
-      }
-      return p;
-    }));
-    setOpenEditModal(false);
-    toast.success('Product updated successfully!');
-  };
-
   const handleDeleteClick = (product) => {
     setSelectedProduct(product);
     setOpenDeleteModal(true);
@@ -265,7 +323,6 @@ const DashboardProducts = () => {
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>SKU</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Category</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Manufacturer</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Price</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Stock</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Created Date</TableCell>
@@ -277,13 +334,12 @@ const DashboardProducts = () => {
               {filteredProducts.map((row) => (
                 <TableRow key={row.id} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                   <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar variant="rounded" src={row.image} alt={row.name} sx={{ width: 48, height: 48 }} />
+                    <Avatar variant="rounded" src={getPrimaryImageUrl(row)} alt={row.name} sx={{ width: 48, height: 48 }} />
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.name}</Typography>
                   </TableCell>
                   <TableCell sx={{ color: 'text.secondary' }}>{row.mpn || row.sku}</TableCell>
                   <TableCell>{categories.find(c => c.id === row.categoryId)?.name || row.category}</TableCell>
                   <TableCell>{row.manufacturer || 'N/A'}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{row.price || 'N/A'}</TableCell>
                   <TableCell>{row.totalStock || row.stock || 0}</TableCell>
                   <TableCell>
                     <Chip 
@@ -345,7 +401,7 @@ const DashboardProducts = () => {
               />
               <TextField 
                 fullWidth 
-                label="Price ($)" 
+                label="Price" 
                 variant="outlined" 
                 type="number" 
                 value={addForm.price} 
@@ -374,25 +430,68 @@ const DashboardProducts = () => {
                 onChange={(e) => setAddForm({ ...addForm, stock: e.target.value })} 
               />
             </Box>
-            <Button variant="outlined" component="label">
-              Upload Product Image
-              <input 
-                type="file" 
-                hidden 
-                accept="image/*" 
-                onChange={async (e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    toast.info('Converting to WebP...', { autoClose: 1000 });
-                    try {
-                      const webpFile = await convertToWebP(e.target.files[0]);
-                      toast.success(`Image converted to WebP: ${webpFile.name}`);
-                    } catch (err) {
-                      toast.error('Failed to convert image');
-                    }
-                  }
-                }}
-              />
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Pack Type</InputLabel>
+                <Select 
+                  label="Pack Type" 
+                  value={addForm.packType} 
+                  onChange={(e) => setAddForm({ ...addForm, packType: e.target.value })}
+                >
+                  {packagingTypes.map(type => (
+                    <MenuItem key={type.id || type.code} value={type.code}>{type.displayName || type.name || type.code}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Currency</InputLabel>
+                <Select 
+                  label="Currency" 
+                  value={addForm.currency} 
+                  onChange={(e) => setAddForm({ ...addForm, currency: e.target.value })}
+                >
+                  {currencies.map(curr => (
+                    <MenuItem key={curr.id || curr.code} value={curr.code}>{curr.code}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Accepted formats: JPEG, PNG, WebP · Max size: 2 MB
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Button variant="outlined" component="label">
+                  Upload Product Image
+                  <input 
+                    type="file" 
+                    hidden 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+
+                      const error = validateUploadFile(file, 'image');
+                      if (error) {
+                        setAddImgError(error);
+                        e.target.value = '';
+                        setAddForm({ ...addForm, imageFile: null });
+                        return;
+                      }
+
+                      setAddImgError('');
+                      setAddForm({ ...addForm, imageFile: file });
+                    }}
+                  />
+                </Button>
+                {addForm.imageFile && <Typography variant="body2">{addForm.imageFile.name}</Typography>}
+              </Box>
+              {addImgError && (
+                <Typography color="error" variant="body2">
+                  {addImgError}
+                </Typography>
+              )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2, px: 3 }}>
@@ -448,73 +547,6 @@ const DashboardProducts = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Edit Product Modal */}
-      <Dialog open={openEditModal} onClose={() => setOpenEditModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Edit Product</DialogTitle>
-        <DialogContent dividers>
-          {selectedProduct && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-              <TextField 
-                fullWidth 
-                label="Product Name" 
-                variant="outlined" 
-                value={editForm.name} 
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} 
-              />
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField 
-                  fullWidth 
-                  label="SKU" 
-                  variant="outlined" 
-                  value={editForm.sku} 
-                  onChange={(e) => setEditForm({ ...editForm, sku: e.target.value })} 
-                />
-                <TextField 
-                  fullWidth 
-                  label="Price" 
-                  variant="outlined" 
-                  type="number" 
-                  value={editForm.price} 
-                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} 
-                />
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select 
-                    label="Category" 
-                    value={editForm.category} 
-                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                  >
-                  {categories.map(cat => (
-                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                  ))}
-                  </Select>
-                </FormControl>
-                <TextField 
-                  fullWidth 
-                  label="Stock" 
-                  variant="outlined" 
-                  type="number" 
-                  value={editForm.stock} 
-                  onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} 
-                />
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, px: 3 }}>
-          <Button onClick={() => setOpenEditModal(false)} color="inherit">Cancel</Button>
-          <Button 
-            onClick={handleUpdateProduct} 
-            variant="contained"
-          >
-            Update Product
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Delete Confirmation Modal */}
       <Dialog open={openDeleteModal} onClose={() => setOpenDeleteModal(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Delete Product</DialogTitle>

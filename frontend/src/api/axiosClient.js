@@ -85,7 +85,7 @@ axiosClient.interceptors.response.use(
 
       try {
         // Retrieve explicit refreshToken
-        const storedRefreshToken = localStorage.getItem('refreshToken');
+        const storedRefreshToken = sessionStorage.getItem('refreshToken');
         if (!storedRefreshToken) throw new Error('No refresh token available');
 
         // Call backend token refresh endpoint with body payload
@@ -94,9 +94,9 @@ axiosClient.interceptors.response.use(
         
         setAccessTokenFn(accessToken);
         if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken);
+          sessionStorage.setItem('refreshToken', refreshToken);
         }
-        localStorage.setItem('token', accessToken);
+        sessionStorage.setItem('token', accessToken);
 
         processQueue(null, accessToken);
         isRefreshing = false;
@@ -107,9 +107,9 @@ axiosClient.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
         setAccessTokenFn(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('refreshToken');
+        sessionStorage.removeItem('user');
         // Dispatch custom event to trigger logout redirect in context
         window.dispatchEvent(new Event('auth-expired'));
         return Promise.reject(refreshError);

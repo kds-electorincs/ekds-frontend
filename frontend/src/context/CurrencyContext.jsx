@@ -5,7 +5,7 @@ const CurrencyContext = createContext(null);
 
 export const CurrencyProvider = ({ children }) => {
   const [currency, setCurrency] = useState(() => {
-    return localStorage.getItem('currency') || 'USD';
+    return sessionStorage.getItem('currency') || 'USD';
   });
   const [rates, setRates] = useState({
     USD: 1.0,
@@ -32,7 +32,7 @@ export const CurrencyProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('currency', currency);
+    sessionStorage.setItem('currency', currency);
   }, [currency]);
 
   const formatPrice = (priceVal) => {

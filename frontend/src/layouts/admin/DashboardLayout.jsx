@@ -46,9 +46,9 @@ const DashboardLayout = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard', permission: PERMISSIONS.VIEW_DASHBOARD },
     { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories', permission: PERMISSIONS.MANAGE_CATEGORIES },
     { text: 'Products', icon: <InventoryIcon />, path: '/admin/products', permission: PERMISSIONS.MANAGE_PRODUCTS },
-    { text: 'Media CMS', icon: <PhotoLibraryIcon />, path: '/admin/media', permission: PERMISSIONS.MANAGE_MEDIA },
-    { text: 'Catalog Config', icon: <SettingsIcon />, path: '/admin/catalog-config', permission: PERMISSIONS.MANAGE_CONFIG },
-    { text: 'Maintenance', icon: <BuildIcon />, path: '/admin/maintenance', permission: PERMISSIONS.MANAGE_MAINTENANCE },
+    // { text: 'Media CMS', icon: <PhotoLibraryIcon />, path: '/admin/media', permission: PERMISSIONS.MANAGE_MEDIA },
+    // { text: 'Catalog Config', icon: <SettingsIcon />, path: '/admin/catalog-config', permission: PERMISSIONS.MANAGE_CONFIG },
+    // { text: 'Maintenance', icon: <BuildIcon />, path: '/admin/maintenance', permission: PERMISSIONS.MANAGE_MAINTENANCE },
   ];
 
   const menuItems = allMenuItems.filter(item => hasPermission(item.permission));

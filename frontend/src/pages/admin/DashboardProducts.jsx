@@ -15,6 +15,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import PriceChangeIcon from '@mui/icons-material/PriceChange';
 import { toast } from 'react-toastify';
 import { validateUploadFile } from '../../utils/uploadValidation';
+import useS3Upload from '../../hooks/useS3Upload';
 
 import { useEffect } from 'react';
 import { productAdminService, categoryAdminService, configAdminService } from '../../services/apiServices';
@@ -59,6 +60,7 @@ const getStatusColor = (status) => {
 
 const DashboardProducts = () => {
   const navigate = useNavigate();
+  const { uploadFile, isUploading } = useS3Upload();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [packagingTypes, setPackagingTypes] = useState([]);
@@ -178,6 +180,17 @@ const DashboardProducts = () => {
     }
     
     try {
+      let uploadedImages = [];
+      if (addForm.imageFile) {
+        toast.info('Uploading product image...', { autoClose: 2000 });
+        const objectKey = await uploadFile(addForm.imageFile, 'PRODUCT_IMAGE');
+        uploadedImages.push({
+          objectKey: objectKey,
+          displayOrder: 0,
+          isPrimary: true
+        });
+      }
+
       // Send real request to backend
       const payload = {
         name: addForm.name,
@@ -201,13 +214,15 @@ const DashboardProducts = () => {
             ]
           }
         ],
-        images: []
+        images: uploadedImages
       };
       await productAdminService.createProduct(payload);
       toast.success('Product added successfully!');
       setOpenAddModal(false);
-      setAddForm({ name: '', sku: '', price: '', category: '', stock: '', packType: '', currency: '' });
-      fetchData();
+      const catId = parseInt(addForm.category);
+      setSelectedCategoryId(catId);
+      setAddForm({ name: '', sku: '', price: '', category: '', stock: '', packType: '', currency: '', imageFile: null });
+      fetchData(catId);
     } catch (err) {
       toast.error('Failed to add product');
     }
@@ -307,13 +322,21 @@ const DashboardProducts = () => {
               ),
             }}
           />
-          <Button 
-            variant="outlined" 
-            startIcon={<FilterListIcon />}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Filters
-          </Button>
+          <FormControl size="small" sx={{ minWidth: 200, borderRadius: 2 }}>
+            <Select 
+              value={selectedCategoryId || ''} 
+              onChange={(e) => {
+                setSelectedCategoryId(e.target.value);
+                fetchData(e.target.value);
+              }}
+              displayEmpty
+            >
+              <MenuItem value="" disabled>Select Category Filter</MenuItem>
+              {categories.map(cat => (
+                <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Box>
         <TableContainer>
           <Table sx={{ minWidth: 800 }}>
@@ -499,8 +522,9 @@ const DashboardProducts = () => {
           <Button 
             onClick={handleAddProduct} 
             variant="contained"
+            disabled={isUploading}
           >
-            Save Product
+            {isUploading ? 'Uploading...' : 'Save Product'}
           </Button>
         </DialogActions>
       </Dialog>

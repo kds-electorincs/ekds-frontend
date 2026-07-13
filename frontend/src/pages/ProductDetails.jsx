@@ -98,7 +98,7 @@ const ProductDetails = () => {
 
               if (attribute.datatype === 'FILE') {
                 isFile = true;
-                const doc = product.documents?.find(d => d.attributeId === attribute.id);
+                const doc = product.documents?.find(d => String(d.attributeId) === String(attribute.id));
                 if (doc) {
                   displayValue = doc.displayName;
                   fileUrl = `${CDN_BASE}/${doc.objectKey}`;
@@ -277,6 +277,27 @@ Link: ${window.location.href}`;
           <Divider sx={{ mb: 6 }} />
           <Typography variant="h5" sx={{ mb: 4, fontWeight: 700 }}>Specifications</Typography>
           {renderSpecs()}
+
+          {product.documents && product.documents.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Documents & Downloads</Typography>
+              <Grid container spacing={2}>
+                {product.documents.map(doc => (
+                  <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                    <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
+                      <Description color="primary" />
+                      <Box>
+                        <a href={`${CDN_BASE}/${doc.objectKey}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: '#1976d2', fontWeight: 600 }}>
+                          {doc.displayName || doc.objectKey} <Download fontSize="small" />
+                        </a>
+                        <Typography variant="caption" color="text.secondary">{doc.contentType}</Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
         </Grid>
 
         {/* Recently Viewed Products */}

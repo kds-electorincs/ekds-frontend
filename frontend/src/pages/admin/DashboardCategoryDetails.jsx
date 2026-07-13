@@ -437,8 +437,6 @@ const DashboardCategoryDetails = () => {
                   <TextField {...field} select fullWidth label="Datatype">
                     <MenuItem value="TEXT">TEXT</MenuItem>
                     <MenuItem value="NUMBER">NUMBER</MenuItem>
-                    <MenuItem value="BOOLEAN">BOOLEAN</MenuItem>
-                    <MenuItem value="ENUM">ENUM</MenuItem>
                     <MenuItem value="FILE">FILE</MenuItem>
                   </TextField>
               )} />
@@ -464,21 +462,6 @@ const DashboardCategoryDetails = () => {
                   <FormControlLabel control={<Switch checked={value} onChange={onChange} />} label="Filterable" />
               )} />
             </Box>
-
-            {attrDatatype === 'ENUM' && (
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle2" mb={2}>Enum Values</Typography>
-                {enumFields.map((item, index) => (
-                  <Box key={item.id} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                    <Controller name={`enumValues.${index}.value`} control={attrControl} render={({ field }) => (
-                      <TextField {...field} size="small" fullWidth placeholder="Value" />
-                    )} />
-                    <IconButton color="error" onClick={() => removeEnum(index)}><DeleteIcon /></IconButton>
-                  </Box>
-                ))}
-                <Button size="small" startIcon={<AddIcon />} onClick={() => appendEnum({ value: '' })}>Add Value</Button>
-              </Paper>
-            )}
           </DialogContent>
           <DialogActions sx={{ p: 2, px: 3 }}>
             <Button onClick={() => { setOpenAddAttrModal(false); setOpenEditAttrModal(false); }}>Cancel</Button>

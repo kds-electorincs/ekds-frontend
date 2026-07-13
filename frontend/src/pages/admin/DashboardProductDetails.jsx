@@ -32,6 +32,20 @@ const DashboardProductDetails = () => {
   const [currency, setCurrency] = useState('USD');
   const [currencies, setCurrencies] = useState([{ code: 'USD', displayName: '$ US Dollar' }]);
   const [packagingTypes, setPackagingTypes] = useState([{ code: 'CUT_TAPE', displayName: 'Cut Tape' }]);
+  const [exchangeRates, setExchangeRates] = useState(null);
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
+        const data = await response.json();
+        setExchangeRates(data.rates);
+      } catch (err) {
+        console.error("Failed to fetch exchange rates", err);
+      }
+    };
+    fetchRates();
+  }, []);
 
   const fetchProduct = async () => {
     setLoading(true);
@@ -70,18 +84,36 @@ const DashboardProductDetails = () => {
     if (product?.categoryId) {
       categoryAdminService.getCategory(product.categoryId).then(res => {
         const cat = res.data || res;
-        const attrs = [];
+        const fileAttrs = [];
+        const textAttrs = [];
         (cat.segments || []).forEach(seg => {
           (seg.attributes || []).forEach(attr => {
-            if (attr.datatype === 'FILE') attrs.push(attr);
+            if (attr.datatype === 'FILE') fileAttrs.push(attr);
+            else textAttrs.push(attr);
           });
         });
-        setFileAttributes(attrs);
+        setFileAttributes(fileAttrs);
+        
+        setProduct(prev => {
+          if (!prev) return prev;
+          const newSpecs = { ...(prev.specs || {}) };
+          let changed = false;
+          textAttrs.forEach(attr => {
+            if (newSpecs[attr.attrKey] === undefined) {
+              newSpecs[attr.attrKey] = '';
+              changed = true;
+            }
+          });
+          if (changed) {
+            return { ...prev, specs: newSpecs };
+          }
+          return prev;
+        });
       }).catch(err => console.error(err));
     }
   }, [product?.categoryId]);
 
-  const exchangeRate = 83.5; // Example USD to INR
+
 
   // Modals state
   const [openPkgModal, setOpenPkgModal] = useState(false);
@@ -94,7 +126,7 @@ const DashboardProductDetails = () => {
   const [selectedPriceId, setSelectedPriceId] = useState(null);
 
   const [pkgForm, setPkgForm] = useState({ type: 'CUT_TAPE', moq: 1, inventory: 0, leadTime: '', status: 'Active' });
-  const [priceForm, setPriceForm] = useState({ qtyLimit: 1, price: 0 });
+  const [priceForm, setPriceForm] = useState({ qtyLimit: 1, price: 0, currency: 'USD' });
   const [docForm, setDocForm] = useState({ name: '', attributeId: '', file: null });
   const [newAttrName, setNewAttrName] = useState('');
 
@@ -169,7 +201,7 @@ const DashboardProductDetails = () => {
   const handleSavePrice = async () => {
     try {
       const payload = {
-        currency: currency,
+        currency: priceForm.currency,
         minQuantity: parseInt(priceForm.qtyLimit),
         unitPriceMinor: Math.round(parseFloat(priceForm.price) * 100)
       };
@@ -185,6 +217,7 @@ const DashboardProductDetails = () => {
   const handleUpdatePrice = async () => {
     try {
       const payload = {
+        currency: priceForm.currency,
         minQuantity: parseInt(priceForm.qtyLimit),
         unitPriceMinor: Math.round(parseFloat(priceForm.price) * 100)
       };
@@ -274,6 +307,7 @@ const DashboardProductDetails = () => {
   };
 
   const handleDeleteDoc = async (docId) => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
     try {
       await productAdminService.deleteDocument(id, docId);
       toast.success('Document deleted!');
@@ -303,13 +337,38 @@ const DashboardProductDetails = () => {
     }
   };
 
-  const convertPrice = (priceMinor, priceCurrency) => {
+  const convertPrice = (priceMinor, baseCurrency) => {
     const amount = priceMinor / 100;
-    return new Intl.NumberFormat('en-IN', {
+    const targetCurrency = currency;
+    
+    // Fallback if rates aren't loaded or it's the exact same currency
+    if (!exchangeRates || baseCurrency === targetCurrency) {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: baseCurrency || 'USD',
+        minimumFractionDigits: 2
+      }).format(amount);
+    }
+
+    const rateBase = exchangeRates[baseCurrency] || 1;
+    const rateTarget = exchangeRates[targetCurrency] || 1;
+    
+    // 1. Convert to target currency
+    let convertedAmount = amount * (rateTarget / rateBase);
+    
+    // 2. Add FX buffer (2%)
+    const FX_BUFFER = 1.02;
+    let bufferedAmount = convertedAmount * FX_BUFFER;
+    
+    // 3. Round to nearest .99 to protect margins (e.g. 117.65 -> 119.99)
+    let finalAmount = Math.ceil(bufferedAmount) - 0.01;
+    if (finalAmount < 0) finalAmount = 0;
+
+    return new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: priceCurrency || currency,
+      currency: targetCurrency,
       minimumFractionDigits: 2
-    }).format(amount);
+    }).format(finalAmount);
   };
 
   if (loading || !product) {
@@ -349,6 +408,7 @@ const DashboardProductDetails = () => {
           <Tab label="Overview" />
           <Tab label="Attributes" />
           <Tab label="Packaging" />
+          <Tab label="Pricing" />
           <Tab label="Images" />
           <Tab label="Documents" />
         </Tabs>
@@ -487,11 +547,23 @@ const DashboardProductDetails = () => {
             </Box>
           </Box>
 
+          {!(product.packaging || product.packagingOptions || []).length && (
+            <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 4, mt: 2 }}>
+              <Typography variant="body1" color="text.secondary">
+                No packaging options found. Please add a packaging option in the "Packaging" tab first to configure price breaks.
+              </Typography>
+            </Paper>
+          )}
+
           {(product.packaging || product.packagingOptions || []).map(pkg => (
             <Paper key={pkg.id} sx={{ p: 2, mb: 3, borderRadius: 4 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={600}>Packaging: {pkg.displayName || pkg.packagingType}</Typography>
-                <Button size="small" startIcon={<AddIcon />} onClick={() => { setSelectedPkgId(pkg.id); setOpenPriceModal(true); }}>Add Price Break</Button>
+                <Button size="small" startIcon={<AddIcon />} onClick={() => { 
+                    setSelectedPkgId(pkg.id); 
+                    setPriceForm({ qtyLimit: 1, price: 0, currency: 'USD' });
+                    setOpenPriceModal(true); 
+                  }}>Add Price Break</Button>
               </Box>
               <Table size="small">
                 <TableHead>
@@ -510,7 +582,7 @@ const DashboardProductDetails = () => {
                         <IconButton size="small" color="secondary" onClick={() => {
                           setSelectedPkgId(pkg.id);
                           setSelectedPriceId(price.id);
-                          setPriceForm({ qtyLimit: price.minQuantity, price: (price.unitPriceMinor / 100).toFixed(2) });
+                          setPriceForm({ qtyLimit: price.minQuantity, price: (price.unitPriceMinor / 100).toFixed(2), currency: price.currency || 'USD' });
                           setOpenEditPriceModal(true);
                         }}>
                           <EditIcon fontSize="small" />
@@ -594,11 +666,17 @@ const DashboardProductDetails = () => {
               <TableBody>
                 {(product.documents || []).map(doc => (
                   <TableRow key={doc.id}>
-                    <TableCell><DescriptionIcon color="action" sx={{ mr: 1, verticalAlign: 'bottom' }} />{doc.displayName}</TableCell>
+                    <TableCell>
+                      <Link href={`${CDN_BASE}/${doc.objectKey}`} target="_blank" rel="noreferrer" underline="hover" sx={{ display: 'flex', alignItems: 'center', color: 'inherit' }}>
+                        <DescriptionIcon color="action" sx={{ mr: 1 }} />
+                        {doc.displayName || doc.objectKey}
+                      </Link>
+                    </TableCell>
                     <TableCell>{doc.contentType}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="secondary"><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleDeleteDoc(doc.id)}><DeleteIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" color="error" onClick={() => handleDeleteDoc(doc.id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -668,10 +746,22 @@ const DashboardProductDetails = () => {
 
       {/* Price Break Modal */}
       <Dialog open={openPriceModal} onClose={() => setOpenPriceModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Price Break (Base: USD)</DialogTitle>
+        <DialogTitle>Add Price Break</DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <FormControl fullWidth>
+            <InputLabel>Currency</InputLabel>
+            <Select
+              label="Currency"
+              value={priceForm.currency}
+              onChange={(e) => setPriceForm({ ...priceForm, currency: e.target.value })}
+            >
+              {currencies.map(c => (
+                <MenuItem key={c.id || c.code} value={c.code}>{c.code}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField label="Upper Limit (Max Qty)" type="number" fullWidth value={priceForm.qtyLimit} onChange={(e) => setPriceForm({ ...priceForm, qtyLimit: e.target.value })} />
-          <TextField label={`Unit Price (${currency})`} type="number" fullWidth value={priceForm.price} onChange={(e) => setPriceForm({ ...priceForm, price: e.target.value })} />
+          <TextField label={`Unit Price (${priceForm.currency})`} type="number" fullWidth value={priceForm.price} onChange={(e) => setPriceForm({ ...priceForm, price: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPriceModal(false)}>Cancel</Button>
@@ -684,6 +774,18 @@ const DashboardProductDetails = () => {
         <DialogTitle>Edit Price Break</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Currency</InputLabel>
+              <Select
+                label="Currency"
+                value={priceForm.currency}
+                onChange={(e) => setPriceForm({ ...priceForm, currency: e.target.value })}
+              >
+                {currencies.map(c => (
+                  <MenuItem key={c.id || c.code} value={c.code}>{c.code}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="Upper Limit (Max Qty)"
               fullWidth
@@ -692,7 +794,7 @@ const DashboardProductDetails = () => {
               onChange={(e) => setPriceForm({ ...priceForm, qtyLimit: e.target.value })}
             />
             <TextField
-              label="Unit Price"
+              label={`Unit Price (${priceForm.currency})`}
               fullWidth
               type="number"
               value={priceForm.price}

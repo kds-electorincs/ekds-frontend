@@ -15,7 +15,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     // Retrieve token from local storage (or your chosen state management)
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     
     // If token exists, attach it to the Authorization header
     if (token) {
@@ -40,9 +40,10 @@ axiosInstance.interceptors.response.use(
       const { status, data } = error.response;
       
       if (status === 401) {
-        // Unauthorized - token might be expired
+        // Unauthorized - token might be expired or invalid credentials
         console.error('Unauthorized access. Logging out...');
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        notification.error(data?.message || 'Invalid email or password.');
         // Redirect to login if needed: window.location.href = '/login';
       } else if (status === 403) {
         notification.error('You do not have permission to perform this action.');

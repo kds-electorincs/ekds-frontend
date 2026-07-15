@@ -9,9 +9,15 @@ import {
   BarChart as BarChartIcon,
   Logout as LogoutIcon,
   Category as CategoryIcon,
-  PhotoLibrary as PhotoLibraryIcon
+  PhotoLibrary as PhotoLibraryIcon,
+  AdminPanelSettings as SecurityIcon,
+  History as HistoryIcon,
+  Settings as SettingsIcon,
+  Build as BuildIcon
 } from '@mui/icons-material';
-import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom';
+import { Link as RouterLink, Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const drawerWidth = 260;
 
@@ -20,20 +26,32 @@ const DashboardLayout = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout, hasPermission } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
-    { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories' },
-    { text: 'Products', icon: <InventoryIcon />, path: '/admin/products' },
-    { text: 'Orders', icon: <ShoppingCartIcon />, path: '/admin/orders' },
-    { text: 'Users', icon: <PeopleIcon />, path: '/admin/users' },
-    { text: 'Media CMS', icon: <PhotoLibraryIcon />, path: '/admin/media' },
-    { text: 'Analytics', icon: <BarChartIcon />, path: '/admin/analytics' },
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const allMenuItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard', permission: PERMISSIONS.VIEW_DASHBOARD },
+    { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories', permission: PERMISSIONS.MANAGE_CATEGORIES },
+    { text: 'Products', icon: <InventoryIcon />, path: '/admin/products', permission: PERMISSIONS.MANAGE_PRODUCTS },
+    // { text: 'Media CMS', icon: <PhotoLibraryIcon />, path: '/admin/media', permission: PERMISSIONS.MANAGE_MEDIA },
+    // { text: 'Catalog Config', icon: <SettingsIcon />, path: '/admin/catalog-config', permission: PERMISSIONS.MANAGE_CONFIG },
+    // { text: 'Maintenance', icon: <BuildIcon />, path: '/admin/maintenance', permission: PERMISSIONS.MANAGE_MAINTENANCE },
   ];
+
+  const menuItems = allMenuItems.filter(item => hasPermission(item.permission));
 
   const drawer = (
     <div>
@@ -73,8 +91,16 @@ const DashboardLayout = () => {
         })}
       </List>
       <Box sx={{ position: 'absolute', bottom: 20, width: '100%', px: 2 }}>
+        <Box sx={{ px: 2, mb: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+            Logged in as:
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            {user?.name || user?.fullName || 'Admin User'} ({user?.role?.replace('_', ' ')})
+          </Typography>
+        </Box>
         <Divider sx={{ mb: 2 }} />
-        <ListItemButton sx={{ borderRadius: 2, color: 'error.main' }}>
+        <ListItemButton onClick={handleLogout} sx={{ borderRadius: 2, color: 'error.main' }}>
           <ListItemIcon sx={{ color: 'error.main' }}>
             <LogoutIcon />
           </ListItemIcon>

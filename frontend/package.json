@@ -9,15 +9,26 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+
   "dependencies": {
     "@emotion/react": "^11.14.0",
+    "@emotion/server": "^11.11.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.2.2",
     "@mui/icons-material": "^9.0.0",
     "@mui/material": "^9.0.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "autoprefixer": "^10.5.2",
     "axios": "^1.15.2",
+    "clsx": "^2.1.1",
+    "compression": "^1.8.1",
+    "cross-env": "^10.1.0",
+    "express": "^5.2.1",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.42.2",
     "jwt-decode": "^4.0.0",
+    "lucide-react": "^1.23.0",
+    "postcss": "^8.5.16",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.74.0",
@@ -25,9 +36,14 @@
     "react-router-dom": "^7.14.2",
     "react-toastify": "^11.1.0",
     "recharts": "^3.8.1",
+    "serve-static": "^2.2.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.2",
+    "vike": "^0.4.260",
     "xlsx": "^0.18.5",
     "yup": "^1.7.1"
   },
+  
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",

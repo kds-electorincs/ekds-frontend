@@ -14,32 +14,13 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 
-const revenueData = [
-  { name: 'Jan', revenue: 4000 },
-  { name: 'Feb', revenue: 3000 },
-  { name: 'Mar', revenue: 5000 },
-  { name: 'Apr', revenue: 4500 },
-  { name: 'May', revenue: 6000 },
-  { name: 'Jun', revenue: 5500 },
-  { name: 'Jul', revenue: 7000 },
-];
+const revenueData = [];
 
-const orderCategoryData = [
-  { name: 'Electronics', value: 400 },
-  { name: 'Clothing', value: 300 },
-  { name: 'Home & Garden', value: 300 },
-  { name: 'Accessories', value: 200 },
-];
+const orderCategoryData = [];
 
 const COLORS = ['#243A5E', '#5F86A6', '#8FB6D8', '#CFE3F1'];
 
-const recentOrders = [
-  { id: 'ORD-001', customer: 'Acme Corp', date: '2026-05-06', total: '$1,250.00', status: 'Completed' },
-  { id: 'ORD-002', customer: 'Global Tech', date: '2026-05-05', total: '$850.00', status: 'Processing' },
-  { id: 'ORD-003', customer: 'Stark Industries', date: '2026-05-04', total: '$3,400.00', status: 'Pending' },
-  { id: 'ORD-004', customer: 'Wayne Enterprises', date: '2026-05-03', total: '$450.00', status: 'Completed' },
-  { id: 'ORD-005', customer: 'Initech', date: '2026-05-02', total: '$1,100.00', status: 'Cancelled' },
-];
+const recentOrders = [];
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -55,10 +36,10 @@ const DashboardHome = () => {
   const theme = useTheme();
 
   const kpis = [
-    { title: 'Total Revenue', value: '$84,500', trend: '+12.5%', isUp: true, icon: <AttachMoney sx={{ color: '#fff' }} />, color: theme.palette.primary.main },
-    { title: 'Active Orders', value: '142', trend: '+5.2%', isUp: true, icon: <ShoppingCart sx={{ color: '#fff' }} />, color: theme.palette.secondary.main },
-    { title: 'Total Users', value: '1,250', trend: '-2.4%', isUp: false, icon: <PeopleAlt sx={{ color: '#fff' }} />, color: '#4caf50' },
-    { title: 'Low Stock Items', value: '28', trend: '+14%', isUp: false, icon: <Inventory sx={{ color: '#fff' }} />, color: '#f44336' },
+    { title: 'Total Revenue', value: '$0', trend: '0%', isUp: true, icon: <AttachMoney sx={{ color: '#fff' }} />, color: theme.palette.primary.main },
+    { title: 'Active Orders', value: '0', trend: '0%', isUp: true, icon: <ShoppingCart sx={{ color: '#fff' }} />, color: theme.palette.secondary.main },
+    { title: 'Total Users', value: '0', trend: '0%', isUp: true, icon: <PeopleAlt sx={{ color: '#fff' }} />, color: '#4caf50' },
+    { title: 'Low Stock Items', value: '0', trend: '0%', isUp: true, icon: <Inventory sx={{ color: '#fff' }} />, color: '#f44336' },
   ];
 
   return (
@@ -175,14 +156,18 @@ const DashboardHome = () => {
                 </PieChart>
               </ResponsiveContainer>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 2, mt: 1 }}>
-                {orderCategoryData.map((entry, index) => (
-                  <Box key={entry.name} sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: COLORS[index % COLORS.length], mr: 1 }} />
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
-                      {entry.name}
-                    </Typography>
-                  </Box>
-                ))}
+                {orderCategoryData.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">No data found</Typography>
+                ) : (
+                  orderCategoryData.map((entry, index) => (
+                    <Box key={entry.name} sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: COLORS[index % COLORS.length], mr: 1 }} />
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
+                        {entry.name}
+                      </Typography>
+                    </Box>
+                  ))
+                )}
               </Box>
             </Box>
           </Paper>
@@ -235,6 +220,15 @@ const DashboardHome = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {recentOrders.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No data found
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>

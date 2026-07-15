@@ -9,14 +9,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { convertToWebP } from '../../utils/imageUtils';
-
-const initialMedia = [
-  { id: 1, name: 'headphones.jpg', url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&q=80', size: '245 KB' },
-  { id: 2, name: 'watch.jpg', url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&q=80', size: '180 KB' },
-  { id: 3, name: 'camera.jpg', url: 'https://images.unsplash.com/photo-1557825835-b453e9df2c21?w=300&q=80', size: '320 KB' },
-  { id: 4, name: 'chair.jpg', url: 'https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?w=300&q=80', size: '410 KB' },
-  { id: 5, name: 'keyboard.jpg', url: 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=300&q=80', size: '290 KB' },
-];
+import { uploadAdminService } from '../../services/apiServices';
 
 const DashboardMedia = () => {
   return (
@@ -45,13 +38,20 @@ const DashboardMedia = () => {
             onChange={async (e) => {
               if (e.target.files && e.target.files[0]) {
                 const originalFile = e.target.files[0];
-                toast.info('Converting to WebP...', { autoClose: 1000 });
+                toast.info('Requesting presigned URL from backend...', { autoClose: 2000 });
                 try {
+                  const presignRes = await uploadAdminService.presignUrl({
+                    purpose: 'PRODUCT_IMAGE',
+                    contentType: originalFile.type
+                  });
+                  // Convert to WebP locally
                   const webpFile = await convertToWebP(originalFile);
-                  toast.success(`Successfully converted and "uploaded": ${webpFile.name} (${(webpFile.size/1024).toFixed(1)} KB)`);
-                  // Here is where you would send `webpFile` to your backend via API
+                  
+                  // In a full implementation, you would PUT webpFile to presignRes.uploadUrl here.
+                  toast.success(`Successfully obtained presigned URL for: ${webpFile.name}`);
                 } catch (err) {
-                  toast.error('Failed to convert image');
+                  console.error(err);
+                  toast.error('Failed to communicate with Upload API');
                 }
               }
             }}
@@ -60,44 +60,13 @@ const DashboardMedia = () => {
       </Box>
 
       <Paper sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)' }}>
-        <Grid container spacing={3}>
-          {initialMedia.map((media) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={media.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-                <CardMedia
-                  component="img"
-                  height="160"
-                  image={media.url}
-                  alt={media.name}
-                  sx={{ objectFit: 'cover' }}
-                />
-                <Box sx={{ p: 2, flexGrow: 1 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }} noWrap>
-                    {media.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {media.size}
-                  </Typography>
-                </Box>
-                <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2, pt: 0 }}>
-                  <Tooltip title="Copy Image URL">
-                    <IconButton size="small" onClick={() => {
-                      navigator.clipboard.writeText(media.url);
-                      toast.success('Image URL copied!');
-                    }}>
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete Image">
-                    <IconButton size="small" color="error" onClick={() => toast.error(`Deleted image: ${media.name}`)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <Box sx={{ py: 6, textAlign: 'center' }}>
+          <Typography variant="body1" color="text.secondary">
+            Media Listing API is currently missing from the backend.
+            <br />
+            (See controllers.md - only UploadController presign exists)
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );

@@ -5,6 +5,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Link as RouterLink } from 'react-router-dom';
 import notification from '../utils/notification';
+import { authService } from '../services/apiServices';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -18,16 +19,19 @@ const ForgotPassword = () => {
     resolver: yupResolver(schema)
   });
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     setLoading(true);
-    console.log(data);
-    
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authService.forgotPassword(data.email);
       setSubmitted(true);
-      notification.info('Reset link sent to your email.');
-    }, 1500);
+      notification.info('If your email is registered, you will receive a reset link.');
+    } catch (error) {
+      console.error('Forgot password request failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>

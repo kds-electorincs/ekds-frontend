@@ -1,52 +1,60 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, TextField, Button, Link, InputAdornment, IconButton, Alert } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Link, InputAdornment, IconButton, Alert, MenuItem } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
 import notification from '../utils/notification';
-import { authService } from '../services/apiServices';
+import { useAuth } from '../context/AuthContext';
+import { ROLES } from '../constants/roles';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  password: yup.string().required('Password is required'),
+  role: yup.string(),
 }).required();
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
   const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: yupResolver(schema)
+    resolver: yupResolver(schema),
+    defaultValues: {
+      role: ROLES.SUPER_ADMIN
+    }
   });
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      // Mock login to disconnect from backend
-      // const response = await authService.login(data);
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const response = { token: 'mock-jwt-token-for-ui-testing' };
-      
-      // Assuming your backend returns a token or user data on successful login
-      if (response && response.token) {
-        localStorage.setItem('token', response.token);
+      const user = await login({
+        email: data.email,
+        password: data.password
+      });
+
+      // Redirect based on role (AuthContext now normalizes this to a single string like 'SUPER_ADMIN')
+      const isAdminRole = Object.values(ROLES).includes(user.role) || 
+                          (user.role && (user.role.includes('ADMIN') || user.role.includes('MANAGER') || user.role.includes('STAFF')));
+
+      if (isAdminRole) {
+        navigate('/admin/dashboard');
+      } else {
+        const from = location.state?.from || new URLSearchParams(location.search).get('redirect') || '/user/dashboard';
+        navigate(from, { replace: true });
       }
-      
-      notification.success('Login successful (Mocked Mode)!');
-      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
-      // Note: The global error handler in axiosInstance will automatically show toast errors
+      // Error handling is managed by axios interceptor/notification
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
@@ -65,6 +73,7 @@ const Login = () => {
             <TextField
               fullWidth
               label="Email Address"
+              autoComplete="username"
               {...register('email')}
               error={!!errors.email}
               helperText={errors.email?.message}
@@ -76,20 +85,24 @@ const Login = () => {
               fullWidth
               label="Password"
               type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
               {...register('password')}
               error={!!errors.password}
               helperText={errors.password?.message}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }
               }}
             />
           </Box>
+
 
           <Box sx={{ textAlign: 'right', mb: 3 }}>
             <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ fontWeight: 600, textDecoration: 'none' }}>
@@ -113,7 +126,15 @@ const Login = () => {
         <Box sx={{ textAlign: 'center', mt: 4 }}>
           <Typography variant="body2" color="text.secondary">
             Don't have an account?{' '}
-            <Link component={RouterLink} to="/register" sx={{ fontWeight: 700, textDecoration: 'none' }}>
+            <Link 
+              component={RouterLink} 
+              to={(() => {
+                const from = location.state?.from || new URLSearchParams(location.search).get('redirect') || '/user/dashboard';
+                return from !== '/user/dashboard' ? `/register?redirect=${encodeURIComponent(from)}` : '/register';
+              })()} 
+              state={{ from: location.state?.from || new URLSearchParams(location.search).get('redirect') }}
+              sx={{ fontWeight: 700, textDecoration: 'none' }}
+            >
               Create Account
             </Link>
           </Typography>

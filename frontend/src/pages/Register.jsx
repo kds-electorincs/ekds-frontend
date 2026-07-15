@@ -3,14 +3,14 @@ import { Box, Paper, Typography, TextField, Button, Link, Grid, ToggleButton, To
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import notification from '../utils/notification';
 import { authService } from '../services/apiServices';
 
 const schema = yup.object({
   fullName: yup.string().required('Full Name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  password: yup.string().required('Password is required'),
   confirmPassword: yup.string().oneOf([yup.ref('password'), null], 'Passwords must match'),
   companyName: yup.string().when('regType', {
     is: 'company',
@@ -26,6 +26,7 @@ const Register = () => {
   const [regType, setRegType] = useState('individual');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
@@ -45,7 +46,9 @@ const Register = () => {
       await authService.register(payload);
       
       notification.success('Registration successful! Please login.');
-      navigate('/login');
+      const from = location.state?.from || new URLSearchParams(location.search).get('redirect');
+      const loginPath = from ? `/login?redirect=${encodeURIComponent(from)}` : '/login';
+      navigate(loginPath, { state: { from } });
     } catch (error) {
       console.error('Registration failed:', error);
       // Note: The global error handler in axiosInstance will automatically show toast errors
@@ -160,7 +163,15 @@ const Register = () => {
         <Box sx={{ textAlign: 'center', mt: 4 }}>
           <Typography variant="body2" color="text.secondary">
             Already have an account?{' '}
-            <Link component={RouterLink} to="/login" sx={{ fontWeight: 700, textDecoration: 'none' }}>
+            <Link 
+              component={RouterLink} 
+              to={(() => {
+                const from = location.state?.from || new URLSearchParams(location.search).get('redirect');
+                return from ? `/login?redirect=${encodeURIComponent(from)}` : '/login';
+              })()} 
+              state={{ from: location.state?.from || new URLSearchParams(location.search).get('redirect') }}
+              sx={{ fontWeight: 700, textDecoration: 'none' }}
+            >
               Login Now
             </Link>
           </Typography>

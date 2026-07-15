@@ -13,7 +13,7 @@ import {
   Description as DescriptionIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { configAdminService, productAdminService, categoryAdminService } from '../../services/apiServices';
+import { configAdminService, productAdminService, categoryAdminService, attributeAdminService, segmentAdminService } from '../../services/apiServices';
 import useS3Upload from '../../hooks/useS3Upload';
 import { validateUploadFile } from '../../utils/uploadValidation';
 
@@ -93,7 +93,7 @@ const DashboardProductDetails = () => {
           });
         });
         setFileAttributes(fileAttrs);
-        
+
         setProduct(prev => {
           if (!prev) return prev;
           const newSpecs = { ...(prev.specs || {}) };
@@ -148,6 +148,46 @@ const DashboardProductDetails = () => {
         active: product.active,
         specs: product.specs || {}
       };
+
+      if (product.categoryId && product.specs) {
+        try {
+          const catRes = await categoryAdminService.getCategory(product.categoryId);
+          const category = catRes.data || catRes;
+          
+          const existingAttrKeys = (category.segments || []).flatMap(s => s.attributes || []).map(a => a.attrKey);
+          const specKeys = Object.keys(product.specs);
+          const missingKeys = specKeys.filter(k => !existingAttrKeys.includes(k));
+          
+          if (missingKeys.length > 0) {
+            let targetSegmentId = null;
+            if (category.segments && category.segments.length > 0) {
+              targetSegmentId = category.segments[0].id;
+            } else {
+              const segRes = await segmentAdminService.createSegment(product.categoryId, {
+                name: 'General',
+                description: 'General attributes',
+                displayOrder: 0
+              });
+              const newSeg = segRes.data || segRes;
+              targetSegmentId = newSeg.id;
+            }
+            
+            for (const key of missingKeys) {
+              await attributeAdminService.createAttribute(product.categoryId, targetSegmentId, {
+                attrKey: key,
+                datatype: 'TEXT',
+                filterable: false,
+                searchable: false,
+                required: false,
+                displayOrder: 0
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to sync missing attributes to category", err);
+        }
+      }
+
       await productAdminService.updateProduct(id, payload);
       toast.success('Product updated successfully!');
       fetchProduct();
@@ -278,31 +318,42 @@ const DashboardProductDetails = () => {
   };
 
   const handleUploadImage = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files || files.length === 0) return;
 
-    const error = validateUploadFile(file, 'image');
-    if (error) {
-      setImgUploadError(error);
-      e.target.value = '';
-      return;
+    for (let file of files) {
+      const error = validateUploadFile(file, 'image');
+      if (error) {
+        setImgUploadError(`Error in file ${file.name}: ${error}`);
+        e.target.value = '';
+        return;
+      }
     }
     setImgUploadError('');
 
     try {
-      toast.info('Uploading image...', { autoClose: 2000 });
-      const objectKey = await uploadFile(file, 'PRODUCT_IMAGE');
+      toast.info(`Uploading ${files.length} image(s)...`, { autoClose: 2000 });
 
-      const payload = {
-        objectKey: objectKey,
-        displayOrder: (product.images || []).length,
-        isPrimary: (product.images || []).length === 0
-      };
-      await productAdminService.addImage(id, payload);
-      toast.success('Image uploaded successfully!');
+      let currentImageCount = (product.images || []).length;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const objectKey = await uploadFile(file, 'PRODUCT_IMAGE');
+
+        const payload = {
+          objectKey: objectKey,
+          displayOrder: currentImageCount + i,
+          isPrimary: currentImageCount === 0 && i === 0
+        };
+        await productAdminService.addImage(id, payload);
+      }
+
+      toast.success('Images uploaded successfully!');
       fetchProduct();
     } catch (err) {
-      toast.error('Failed to upload image');
+      toast.error('Failed to upload one or more images');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -340,7 +391,7 @@ const DashboardProductDetails = () => {
   const convertPrice = (priceMinor, baseCurrency) => {
     const amount = priceMinor / 100;
     const targetCurrency = currency;
-    
+
     // Fallback if rates aren't loaded or it's the exact same currency
     if (!exchangeRates || baseCurrency === targetCurrency) {
       return new Intl.NumberFormat(undefined, {
@@ -352,14 +403,14 @@ const DashboardProductDetails = () => {
 
     const rateBase = exchangeRates[baseCurrency] || 1;
     const rateTarget = exchangeRates[targetCurrency] || 1;
-    
+
     // 1. Convert to target currency
     let convertedAmount = amount * (rateTarget / rateBase);
-    
+
     // 2. Add FX buffer (2%)
     const FX_BUFFER = 1.02;
     let bufferedAmount = convertedAmount * FX_BUFFER;
-    
+
     // 3. Round to nearest .99 to protect margins (e.g. 117.65 -> 119.99)
     let finalAmount = Math.ceil(bufferedAmount) - 0.01;
     if (finalAmount < 0) finalAmount = 0;
@@ -559,11 +610,11 @@ const DashboardProductDetails = () => {
             <Paper key={pkg.id} sx={{ p: 2, mb: 3, borderRadius: 4 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={600}>Packaging: {pkg.displayName || pkg.packagingType}</Typography>
-                <Button size="small" startIcon={<AddIcon />} onClick={() => { 
-                    setSelectedPkgId(pkg.id); 
-                    setPriceForm({ qtyLimit: 1, price: 0, currency: 'USD' });
-                    setOpenPriceModal(true); 
-                  }}>Add Price Break</Button>
+                <Button size="small" startIcon={<AddIcon />} onClick={() => {
+                  setSelectedPkgId(pkg.id);
+                  setPriceForm({ qtyLimit: 1, price: 0, currency: 'USD' });
+                  setOpenPriceModal(true);
+                }}>Add Price Break</Button>
               </Box>
               <Table size="small">
                 <TableHead>
@@ -612,7 +663,7 @@ const DashboardProductDetails = () => {
               </Typography>
               <Button variant="contained" component="label" startIcon={<UploadIcon />} disabled={isUploading} sx={{ float: 'right' }}>
                 {isUploading ? 'Uploading...' : 'Upload Image'}
-                <input type="file" hidden accept="image/*" onChange={handleUploadImage} />
+                <input type="file" hidden multiple accept="image/*" onChange={handleUploadImage} />
               </Button>
               {imgUploadError && (
                 <Typography color="error" variant="body2" sx={{ display: 'block', clear: 'both', pt: 1, textAlign: 'right' }}>
@@ -865,11 +916,49 @@ const DashboardProductDetails = () => {
         <DialogActions>
           <Button onClick={() => setOpenAttrModal(false)}>Cancel</Button>
           <Button
-            onClick={() => {
+            onClick={async () => {
               if (newAttrName.trim()) {
-                setProduct({ ...product, specs: { ...(product.specs || {}), [newAttrName.trim()]: "" } });
+                const attrName = newAttrName.trim();
+                setProduct({ ...product, specs: { ...(product.specs || {}), [attrName]: "" } });
                 setNewAttrName('');
                 setOpenAttrModal(false);
+
+                if (product.categoryId) {
+                  try {
+                    const catRes = await categoryAdminService.getCategory(product.categoryId);
+                    const category = catRes.data || catRes;
+
+                    let targetSegmentId = null;
+                    if (category.segments && category.segments.length > 0) {
+                      targetSegmentId = category.segments[0].id;
+                    } else {
+                      const segRes = await segmentAdminService.createSegment(product.categoryId, {
+                        name: 'General',
+                        description: 'General attributes',
+                        displayOrder: 0
+                      });
+                      const newSeg = segRes.data || segRes;
+                      targetSegmentId = newSeg.id;
+                    }
+
+                    const existingAttr = (category.segments || []).flatMap(s => s.attributes || []).find(a => a.attrKey === attrName);
+
+                    if (!existingAttr && targetSegmentId) {
+                      await attributeAdminService.createAttribute(product.categoryId, targetSegmentId, {
+                        attrKey: attrName,
+                        datatype: 'TEXT',
+                        filterable: false,
+                        searchable: false,
+                        required: false,
+                        displayOrder: 0
+                      });
+                      toast.success(`Attribute '${attrName}' synced to category.`);
+                    }
+                  } catch (err) {
+                    console.error("Failed to add attribute to category", err);
+                    toast.error("Attribute added locally, but failed to sync to category.");
+                  }
+                }
               }
             }}
             variant="contained"

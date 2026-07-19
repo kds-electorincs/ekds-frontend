@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 
 // Create base instance
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://d33txvk614c5de.cloudfront.net',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

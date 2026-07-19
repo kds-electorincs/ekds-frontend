@@ -4,7 +4,7 @@ import notification from '../utils/notification'; // Reusing your existing notif
 // Create an Axios instance
 const axiosInstance = axios.create({
   // Use Vite environment variable or fallback to localhost:8080/api (IntelliJ/Spring Boot default)
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api', 
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://d33txvk614c5de.cloudfront.net',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -16,7 +16,7 @@ axiosInstance.interceptors.request.use(
   (config) => {
     // Retrieve token from local storage (or your chosen state management)
     const token = sessionStorage.getItem('token');
-    
+
     // If token exists, attach it to the Authorization header
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -38,7 +38,7 @@ axiosInstance.interceptors.response.use(
     // Handle generic errors here
     if (error.response) {
       const { status, data } = error.response;
-      
+
       if (status === 401) {
         // Unauthorized - token might be expired or invalid credentials
         console.error('Unauthorized access. Logging out...');

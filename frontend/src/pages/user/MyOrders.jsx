@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
-import { Box, Typography, Tabs, Tab, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
-
-const mockOrders = [
-  { id: 'ORD-001', date: '2023-10-25', items: 3, total: 1250.00, status: 'Processing' },
-  { id: 'ORD-002', date: '2023-10-20', items: 1, total: 450.00, status: 'Shipped' },
-  { id: 'ORD-003', date: '2023-10-15', items: 5, total: 3200.00, status: 'Cancelled' },
-];
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Tabs, Tab, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress } from '@mui/material';
+import { userService } from '../../services/apiServices';
 
 const MyOrders = () => {
   const [tabValue, setTabValue] = useState(0);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const res = await userService.getOrders();
+        setOrders(res?.data || res?.orders || res || []);
+      } catch (err) {
+        console.error("Failed to fetch orders:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -18,8 +30,8 @@ const MyOrders = () => {
   const currentStatus = statuses[tabValue];
 
   const filteredOrders = currentStatus === 'All' 
-    ? mockOrders 
-    : mockOrders.filter(o => o.status === currentStatus);
+    ? orders 
+    : orders.filter(o => o.status === currentStatus);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -52,12 +64,16 @@ const MyOrders = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center"><CircularProgress size={24} /></TableCell>
+              </TableRow>
+            ) : filteredOrders.length > 0 ? filteredOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell fontWeight={600} color="primary.main">{order.id}</TableCell>
                 <TableCell>{order.date}</TableCell>
                 <TableCell>{order.items}</TableCell>
-                <TableCell>${order.total.toFixed(2)}</TableCell>
+                <TableCell>${Number(order.total).toFixed(2)}</TableCell>
                 <TableCell>
                   <Chip label={order.status} size="small" color={getStatusColor(order.status)} />
                 </TableCell>

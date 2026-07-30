@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Grid, Typography, Box, Button, Divider, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, CircularProgress } from '@mui/material';
-import { Add, Remove, ShoppingCart, Description, Gavel, FavoriteBorder, WhatsApp, Download } from '@mui/icons-material';
+import { Add, Remove, Description, Gavel, FavoriteBorder, ShoppingCart, FlashOn, Download } from '@mui/icons-material';
 import StatusChip from '../components/StatusChip';
 import notification from '../utils/notification';
-import { useCart } from '../context/CartContext';
 import { productPublicService, categoryPublicService } from '../services/apiServices';
+import { useCart } from '../context/CartContext';
 
 const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [category, setCategory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,17 +21,27 @@ const ProductDetails = () => {
   const [recentProducts, setRecentProducts] = useState([]);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
-  const { addToCart, setIsCartOpen } = useCart();
-
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(false);
       try {
-        const prod = await productPublicService.getProduct(id);
-        const cat = await categoryPublicService.getCategory(prod.categoryId);
+        const prod = await productPublicService.getProduct(id, { currency: 'INR' });
         setProduct(prod);
-        setCategory(cat);
+        if (prod.packagingOptions && prod.packagingOptions.length > 0) {
+          setQuantity(prod.packagingOptions[0].minOrderQuantity || 1);
+        }
+        if (prod && prod.category && (prod.category.slug || prod.category.id || prod.categoryId)) {
+          try {
+            const cat = await categoryPublicService.getCategory(prod.category.slug || prod.category.id || prod.categoryId);
+            setCategory(cat);
+          } catch (e) {
+            console.warn("Category fetch info:", e);
+            setCategory(typeof prod.category === 'object' ? prod.category : { name: prod.category || "Catalog" });
+          }
+        } else if (typeof prod.category === 'object') {
+          setCategory(prod.category);
+        }
 
         // Save to recently viewed
         const recentlyViewed = JSON.parse(sessionStorage.getItem('recentlyViewed') || '[]');
@@ -56,15 +67,21 @@ const ProductDetails = () => {
   if (error || !product) return <Typography color="error" align="center" sx={{ py: 10 }}>Failed to load product</Typography>;
 
   const primaryImage = product.images?.find(img => img.isPrimary) || product.images?.[0];
-  const imageUrl = primaryImage ? `${CDN_BASE}/${primaryImage.objectKey}` : 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&q=80&w=500';
+  const imageUrl = primaryImage ? (primaryImage.url || `${CDN_BASE}/${primaryImage.objectKey}`) : (product.primaryImageUrl || product.image || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&q=80&w=500');
 
-  const formatPrice = (unitPriceMinor, currencyCode) => {
+  const formatPrice = (unitPriceMinor, currencyCode = 'INR') => {
+    if (unitPriceMinor == null || isNaN(unitPriceMinor)) return 'Contact for Price';
     const amount = unitPriceMinor / 100;
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 2
-    }).format(amount);
+    const validCurrency = (currencyCode && typeof currencyCode === 'string' && currencyCode.trim().length === 3) ? currencyCode.trim().toUpperCase() : 'INR';
+    try {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: validCurrency,
+        minimumFractionDigits: 2
+      }).format(amount);
+    } catch (e) {
+      return `₹${amount.toFixed(2)}`;
+    }
   };
 
   const renderStockInfo = () => {
@@ -98,10 +115,11 @@ const ProductDetails = () => {
 
               if (attribute.datatype === 'FILE') {
                 isFile = true;
-                const doc = product.documents?.find(d => String(d.attributeId) === String(attribute.id));
-                if (doc) {
-                  displayValue = doc.displayName;
-                  fileUrl = `${CDN_BASE}/${doc.objectKey}`;
+                const doc = product.documents?.find(d => String(d.attributeId) === String(attribute.id) || String(d.id) === String(attribute.document?.id));
+                if (doc || attribute.document) {
+                  const targetDoc = doc || attribute.document;
+                  displayValue = targetDoc.displayName;
+                  fileUrl = targetDoc.url || `${CDN_BASE}/${targetDoc.objectKey}`;
                 }
               } else {
                 const value = product.specs?.[attribute.attrKey];
@@ -134,22 +152,56 @@ const ProductDetails = () => {
     });
   };
 
-  // Base price extraction (assumes first package and first price break)
+  // MOQ, Multiple, and Price Break resolution (Sections 2 & 3)
   const defaultPackage = product.packagingOptions?.[0];
-  const defaultPrice = defaultPackage?.priceBreaks?.[0];
+  const moq = defaultPackage?.minOrderQuantity || 1;
+  const orderMultiple = defaultPackage?.orderMultiple || 1;
 
-  const handleAddToCart = () => {
-    addToCart(product, quantity);
-    setIsCartOpen(true);
+  const resolveUnitPriceMinor = (priceBreaks, qty) => {
+    if (!priceBreaks || !priceBreaks.length) return null;
+    const applicable = priceBreaks
+      .filter(pb => pb.minQuantity <= qty)
+      .sort((a, b) => b.minQuantity - a.minQuantity)[0];
+    return applicable ? applicable.unitPriceMinor : null;
   };
 
-  const handleWhatsAppRFQ = () => {
-    const message = `Hello KDS Archana, I would like to request a wholesale quotation for:
-Product: ${product.name}
-Part ID: ${product.id}
-Quantity: ${quantity} units
-Link: ${window.location.href}`;
-    window.open(`https://wa.me/918022150210?text=${encodeURIComponent(message)}`, '_blank');
+  const activeUnitPriceMinor = resolveUnitPriceMinor(defaultPackage?.priceBreaks, quantity) ?? product.fromPriceMinor;
+
+  const getProductItemForCart = () => {
+    let majorPrice = 0;
+    if (activeUnitPriceMinor != null) {
+      majorPrice = activeUnitPriceMinor / 100;
+    } else if (product.price != null) {
+      majorPrice = product.price;
+    }
+    
+    let imageUrl = '';
+    if (product.media?.images?.[0]) {
+      const imgPath = product.media.images[0].filePath || product.media.images[0].url || product.media.images[0];
+      imageUrl = imgPath.startsWith('http') ? imgPath : `${CDN_BASE}/${imgPath.replace(/^\//, '')}`;
+    } else if (product.image) {
+      imageUrl = product.image;
+    }
+
+    return {
+      id: product.id || product.slug || 'p-item',
+      name: product.name || 'Component',
+      price: majorPrice,
+      currency: product.currency || 'INR',
+      image: imageUrl,
+      stock: product.totalStock !== undefined ? product.totalStock : (product.stock || 1000)
+    };
+  };
+
+  const handleAddToCart = () => {
+    const item = getProductItemForCart();
+    addToCart(item, quantity, true);
+  };
+
+  const handleBuyNow = () => {
+    const item = getProductItemForCart();
+    addToCart(item, quantity, false);
+    navigate('/checkout');
   };
 
   return (
@@ -175,7 +227,7 @@ Link: ${window.location.href}`;
             
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
               <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {defaultPrice ? formatPrice(defaultPrice.unitPriceMinor, defaultPrice.currency) : 'Contact for Price'}
+                {activeUnitPriceMinor != null ? formatPrice(activeUnitPriceMinor, product.currency || 'INR') : (product.price ? formatPrice(product.price * 100, 'INR') : 'Contact for Price')}
               </Typography>
               <StatusChip status={product.totalStock > 0 ? 'shipped' : 'error'} />
               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -215,11 +267,11 @@ Link: ${window.location.href}`;
             )}
 
             {/* Actions */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                <IconButton onClick={() => setQuantity(Math.max(1, quantity - 1))}><Remove /></IconButton>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
+                <IconButton onClick={() => setQuantity(Math.max(moq, quantity - orderMultiple))}><Remove /></IconButton>
                 <Typography sx={{ px: 2, fontWeight: 700 }}>{quantity}</Typography>
-                <IconButton onClick={() => setQuantity(quantity + 1)}><Add /></IconButton>
+                <IconButton onClick={() => setQuantity(quantity + orderMultiple)}><Add /></IconButton>
               </Box>
               <Button 
                 variant="contained" 
@@ -227,48 +279,37 @@ Link: ${window.location.href}`;
                 fullWidth 
                 startIcon={<ShoppingCart />}
                 onClick={handleAddToCart}
-                disabled={product.totalStock === 0 && !product.restockLeadDays}
-                sx={{ py: 1.5, borderRadius: 2 }}
+                sx={{ py: 1.5, borderRadius: 2, fontWeight: 800, textTransform: 'none', bgcolor: 'primary.main', boxShadow: '0 4px 14px rgba(25, 118, 210, 0.25)' }}
               >
                 Add to Cart
               </Button>
-              <IconButton variant="outlined" sx={{ border: '1px solid', borderColor: 'divider', p: 1.5 }}>
+              <IconButton variant="outlined" sx={{ border: '1px solid', borderColor: 'divider', p: 1.5, borderRadius: 2 }}>
                 <FavoriteBorder />
               </IconButton>
             </Box>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Button 
-                  variant="outlined" 
-                  fullWidth 
-                  startIcon={<Gavel />}
-                  onClick={() => { notification.success(`Quotation request submitted for ${product.name}!`); navigate('/user/quotations'); }}
-                  sx={{ py: 1.5, borderRadius: 2, mb: 2 }}
-                >
-                  Request Quotation
-                </Button>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Button 
-                  variant="outlined" 
-                  color="success"
-                  fullWidth 
-                  startIcon={<WhatsApp />}
-                  onClick={handleWhatsAppRFQ}
-                  sx={{ 
-                    py: 1.5, 
-                    borderRadius: 2, 
-                    mb: 2, 
-                    color: '#25D366', 
-                    borderColor: '#25D366', 
-                    '&:hover': { bgcolor: 'rgba(37, 211, 102, 0.04)', borderColor: '#25D366' } 
-                  }}
-                >
-                  WhatsApp RFQ
-                </Button>
-              </Grid>
-            </Grid>
+            <Box sx={{ mb: 4 }}>
+              <Button 
+                variant="contained" 
+                fullWidth 
+                size="large"
+                startIcon={<FlashOn />}
+                onClick={handleBuyNow}
+                sx={{ 
+                  py: 1.5, 
+                  borderRadius: 2, 
+                  fontWeight: 850,
+                  fontSize: '1.05rem',
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #FF6B00 0%, #FFA800 100%)',
+                  color: '#ffffff',
+                  boxShadow: '0 6px 20px rgba(255, 107, 0, 0.35)',
+                  '&:hover': { background: 'linear-gradient(135deg, #E56000 0%, #E69700 100%)', boxShadow: '0 8px 24px rgba(255, 107, 0, 0.45)' }
+                }}
+              >
+                Buy Now (Proceed to Checkout)
+              </Button>
+            </Box>
           </Box>
         </Grid>
 
@@ -332,7 +373,7 @@ Link: ${window.location.href}`;
                       {p.name}
                     </Typography>
                     <Typography variant="body2" fontWeight={750} color="primary.main">
-                      {formatPrice(p.price)}
+                      {p.fromPriceMinor != null ? formatPrice(p.fromPriceMinor, p.currency) : (p.price != null ? formatPrice(p.price * 100, p.currency) : 'Contact for Price')}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -374,23 +415,34 @@ Link: ${window.location.href}`;
               <Typography variant="subtitle2" fontWeight={700} sx={{ maxWidth: { xs: 150, sm: 300 }, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {product.name}
               </Typography>
-              <Typography variant="body2" color="primary.main" fontWeight={800}>{formatPrice(product.price)}</Typography>
+              <Typography variant="body2" color="primary.main" fontWeight={800}>
+                {activeUnitPriceMinor != null ? formatPrice(activeUnitPriceMinor, product.currency) : (product.price != null ? formatPrice(product.price * 100, product.currency) : 'Contact for Price')}
+              </Typography>
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-              <IconButton size="small" onClick={() => setQuantity(Math.max(1, quantity - 1))}><Remove /></IconButton>
+              <IconButton size="small" onClick={() => setQuantity(Math.max(moq, quantity - orderMultiple))}><Remove /></IconButton>
               <Typography sx={{ px: 1.5, fontWeight: 700, fontSize: '0.9rem' }}>{quantity}</Typography>
-              <IconButton size="small" onClick={() => setQuantity(quantity + 1)}><Add /></IconButton>
+              <IconButton size="small" onClick={() => setQuantity(quantity + orderMultiple)}><Add /></IconButton>
             </Box>
             <Button 
               variant="contained" 
               startIcon={<ShoppingCart />} 
               onClick={handleAddToCart}
-              disabled={product.stock === 0}
               size="small"
+              sx={{ fontWeight: 700, textTransform: 'none', px: 2.5, py: 1, borderRadius: 2 }}
             >
               Add to Cart
+            </Button>
+            <Button 
+              variant="contained" 
+              startIcon={<FlashOn />} 
+              onClick={handleBuyNow}
+              size="small"
+              sx={{ fontWeight: 800, textTransform: 'none', background: 'linear-gradient(135deg, #FF6B00 0%, #FFA800 100%)', px: 3, py: 1, borderRadius: 2 }}
+            >
+              Buy Now
             </Button>
           </Box>
         </Paper>

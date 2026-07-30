@@ -388,21 +388,23 @@ const DashboardProductDetails = () => {
     }
   };
 
-  const convertPrice = (priceMinor, baseCurrency) => {
+  const convertPrice = (priceMinor, baseCurrency = 'USD') => {
     const amount = priceMinor / 100;
-    const targetCurrency = currency;
+    const targetCurrency = currency || 'USD';
+    const validBase = (baseCurrency && typeof baseCurrency === 'string' && baseCurrency.trim().length === 3) ? baseCurrency.trim().toUpperCase() : 'USD';
+    const validTarget = (targetCurrency && typeof targetCurrency === 'string' && targetCurrency.trim().length === 3) ? targetCurrency.trim().toUpperCase() : 'USD';
 
     // Fallback if rates aren't loaded or it's the exact same currency
-    if (!exchangeRates || baseCurrency === targetCurrency) {
+    if (!exchangeRates || validBase === validTarget) {
       return new Intl.NumberFormat(undefined, {
         style: 'currency',
-        currency: baseCurrency || 'USD',
+        currency: validBase,
         minimumFractionDigits: 2
       }).format(amount);
     }
 
-    const rateBase = exchangeRates[baseCurrency] || 1;
-    const rateTarget = exchangeRates[targetCurrency] || 1;
+    const rateBase = exchangeRates[validBase] || 1;
+    const rateTarget = exchangeRates[validTarget] || 1;
 
     // 1. Convert to target currency
     let convertedAmount = amount * (rateTarget / rateBase);
@@ -417,7 +419,7 @@ const DashboardProductDetails = () => {
 
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: targetCurrency,
+      currency: validTarget,
       minimumFractionDigits: 2
     }).format(finalAmount);
   };

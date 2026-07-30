@@ -13,170 +13,13 @@ import {
 } from '@mui/icons-material';
 import { Link as RouterLink, useSearchParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { MOCK_PRODUCTS } from '../constants/mockData';
-
-// Hierarchical Category Data for Product Index (DigiKey Style)
-const PRODUCT_INDEX_DATA = [
-  {
-    name: "Semiconductors",
-    icon: "🔌",
-    subcategories: [
-      {
-        name: "Isolators",
-        items: [
-          { name: "Digital Isolators", count: 120 },
-          { name: "Isolators - Gate Drivers", count: 85 },
-          { name: "Optoisolators - Logic Output", count: 45 },
-          { name: "Optoisolators - Transistor", count: 312 },
-          { name: "Optoisolators - Triac Output", count: 96 }
-        ]
-      },
-      {
-        name: "Integrated Circuits (ICs)",
-        items: [
-          { name: "Embedded Microcontrollers", count: 450 },
-          { name: "Linear Amplifiers", count: 180 },
-          { name: "Memory Chips", count: 220 },
-          { name: "Power Management PMIC", count: 340 }
-        ]
-      },
-      {
-        name: "Discrete Semiconductors",
-        items: [
-          { name: "Diodes - Rectifiers", count: 520 },
-          { name: "Transistors - FETs, MOSFETs", count: 710 },
-          { name: "Thyristors - SCRs", count: 130 },
-          { name: "Transistors - Bipolar BJT", count: 440 }
-        ]
-      }
-    ]
-  },
-  {
-    name: "Industrial Tools",
-    icon: "🛠️",
-    subcategories: [
-      {
-        name: "Power Tools",
-        items: [
-          { name: "Drill Machines", count: 25 },
-          { name: "Angle Grinders", count: 18 },
-          { name: "Demolition Hammers", count: 12 },
-          { name: "Heat Guns", count: 15 }
-        ]
-      },
-      {
-        name: "Hand Tools",
-        items: [
-          { name: "Wrenches & Sockets", count: 140 },
-          { name: "Screwdrivers", count: 210 },
-          { name: "Pliers & Cutters", count: 85 },
-          { name: "Tool Sets", count: 30 }
-        ]
-      },
-      {
-        name: "Abrasives",
-        items: [
-          { name: "Grinding Wheels", count: 90 },
-          { name: "Sanding Discs", count: 110 },
-          { name: "Cut-off Wheels", count: 65 }
-        ]
-      }
-    ]
-  },
-  {
-    name: "Safety Gear",
-    icon: "🦺",
-    subcategories: [
-      {
-        name: "Head Protection",
-        items: [
-          { name: "Professional Hard Hats", count: 150 },
-          { name: "Safety Helmets", count: 80 },
-          { name: "Bump Caps", count: 45 }
-        ]
-      },
-      {
-        name: "Protective Wear",
-        items: [
-          { name: "Safety Vests", count: 320 },
-          { name: "Steel Toe Work Boots", count: 115 },
-          { name: "Safety Glasses", count: 240 },
-          { name: "Ear Muffs", count: 90 }
-        ]
-      },
-      {
-        name: "Hand Protection",
-        items: [
-          { name: "Cut Resistant Gloves", count: 180 },
-          { name: "Chemical Resistant Gloves", count: 70 },
-          { name: "Leather Work Gloves", count: 125 }
-        ]
-      }
-    ]
-  },
-  {
-    name: "Electrical Supplies",
-    icon: "⚡",
-    subcategories: [
-      {
-        name: "LED & Lighting",
-        items: [
-          { name: "Industrial LED Floodlights", count: 40 },
-          { name: "Warehouse High Bay Lights", count: 22 },
-          { name: "LED Strips & Drivers", count: 95 }
-        ]
-      },
-      {
-        name: "Switches & Relays",
-        items: [
-          { name: "Rocker Switches", count: 340 },
-          { name: "Solid State Relays", count: 150 },
-          { name: "Limit Switches", count: 115 },
-          { name: "Push Buttons", count: 280 }
-        ]
-      },
-      {
-        name: "Circuit Protection",
-        items: [
-          { name: "Fuses & Fuse Holders", count: 410 },
-          { name: "Circuit Breakers", count: 190 },
-          { name: "Surge Protectors", count: 80 }
-        ]
-      }
-    ]
-  },
-  {
-    name: "Cables & Wires",
-    icon: "🔌",
-    subcategories: [
-      {
-        name: "Multi-Conductor Cables",
-        items: [
-          { name: "Shielded Cables", count: 120 },
-          { name: "Coaxial Cables", count: 85 },
-          { name: "Fiber Optic Cables", count: 45 }
-        ]
-      }
-    ]
-  },
-  {
-    name: "Connectors & Terminals",
-    icon: "📎",
-    subcategories: [
-      {
-        name: "Circular Connectors",
-        items: [
-          { name: "Circular Shells", count: 310 },
-          { name: "Circular Contacts", count: 520 },
-          { name: "Circular Cable Assemblies", count: 115 }
-        ]
-      }
-    ]
-  }
-];
+import { productPublicService, categoryPublicService } from '../services/apiServices';
+import SkeletonLoader from '../components/common/SkeletonLoader';
+import EmptyState from '../components/common/EmptyState';
 
 const ProductListing = () => {
   const [products, setProducts] = useState([]);
+  const [productIndexData, setProductIndexData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -196,12 +39,71 @@ const ProductListing = () => {
   const [rohsCompliant, setRohsCompliant] = useState(false);
   const [sortBy, setSortBy] = useState('featured');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
 
+  // Fetch categories once on mount
   useEffect(() => {
-    // Development override: Load mock products instantly
-    setProducts(MOCK_PRODUCTS);
-    setLoading(false);
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryPublicService.listCategories();
+        const data = response?.content || response?.data?.content || response?.data || response?.categories || response || [];
+        const formattedData = (Array.isArray(data) ? data : []).map(cat => ({
+          id: cat.id,
+          name: cat.name || '',
+          slug: cat.slug || (cat.name || '').toLowerCase().replace(/\s+/g, '-'),
+          icon: cat.icon || "📁",
+          productCount: cat.productCount || 0,
+          subcategories: (cat.segments || cat.subcategories || []).map(seg => ({
+            name: seg.name,
+            items: (seg.attributes || seg.items || []).map(attr => ({
+              name: attr.attrKey || attr.name || attr,
+              count: attr.count || 0
+            }))
+          }))
+        }));
+        setProductIndexData(formattedData);
+      } catch (err) {
+        console.error("Failed to fetch categories for index:", err);
+      }
+    };
+    fetchCategories();
   }, []);
+
+  // Fetch products whenever selectedCategory changes
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        let response;
+        if (selectedCategory) {
+          const foundCat = productIndexData.find(c => 
+            c.name?.toLowerCase() === selectedCategory.toLowerCase() || 
+            c.slug?.toLowerCase() === selectedCategory.toLowerCase() ||
+            String(c.id) === String(selectedCategory)
+          );
+          const slugToUse = foundCat ? foundCat.slug : selectedCategory.toLowerCase().replace(/\s+/g, '-');
+          try {
+            response = await categoryPublicService.getCategoryProducts(slugToUse, { currency: 'INR', size: 50 });
+          } catch (e) {
+            console.warn("Category product fetch fallback to all products:", e);
+            response = await productPublicService.listProducts({ currency: 'INR', size: 50 });
+          }
+        } else {
+          response = await productPublicService.listProducts({ currency: 'INR', size: 50 });
+        }
+        const items = response?.content || response?.data || response?.products || response || [];
+        setProducts(Array.isArray(items) ? items : []);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to load products:", err);
+        setError("Failed to load products from server.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProducts();
+  }, [selectedCategory, productIndexData]);
 
   // Sync state if URL parameters change (from navbar, mega menu, or other links)
   useEffect(() => {
@@ -211,26 +113,12 @@ const ProductListing = () => {
     setSelectedCategory(c);
   }, [searchParams]);
 
-  // Smooth scroll handler for the Index View sidebar
-  const handleCategoryScroll = (catName) => {
-    const isGridView = searchQuery || selectedCategory;
-    if (isGridView) {
-      // Clear filters to transition to index view, then scroll
-      setSearchQuery('');
-      setSelectedCategory('');
-      setSearchParams({});
-      setTimeout(() => {
-        const element = document.getElementById(`category-section-${catName}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 150);
-    } else {
-      const element = document.getElementById(`category-section-${catName}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
+  // Handle Category select in sidebar or index cards
+  const handleCategorySelect = (cat) => {
+    const targetVal = cat.slug || cat.name;
+    setSelectedCategory(targetVal);
+    setSearchParams({ category: targetVal });
+    setViewMode('grid');
   };
 
   // Handle Search Within sidebar filter submission
@@ -280,25 +168,38 @@ const ProductListing = () => {
   // Memoized Filtered and Sorted products list
   const sortedProducts = React.useMemo(() => {
     const filtered = products.filter(product => {
+      const name = (product.name || '').toLowerCase();
+      const mfr = (product.manufacturer || '').toLowerCase();
+      const mpn = (product.mpn || '').toLowerCase();
+      const cat = (typeof product.category === 'object' ? product.category?.name : product.category || '').toLowerCase();
+      const query = (searchQuery || '').toLowerCase();
+
       const matchesSearch = !searchQuery || 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        product.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = !selectedCategory || 
-        product.category.toLowerCase() === selectedCategory.toLowerCase();
-      const matchesStock = !inStockOnly || product.stock > 0;
-      const matchesRohs = !rohsCompliant || true; // Mock: all products are RoHS compliant in mock catalog
-      return matchesSearch && matchesCategory && matchesStock && matchesRohs;
+        name.includes(query) || 
+        mfr.includes(query) || 
+        mpn.includes(query) || 
+        cat.includes(query);
+      
+      const stock = product.totalStock !== undefined ? product.totalStock : (product.stock || 0);
+      const matchesStock = !inStockOnly || stock > 0;
+      const matchesRohs = !rohsCompliant || !!product.rohsCompliant; 
+      return matchesSearch && matchesStock && matchesRohs;
     });
 
     return [...filtered].sort((a, b) => {
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
-      if (sortBy === 'stock') return b.stock - a.stock;
+      const priceA = (a.fromPriceMinor !== undefined ? a.fromPriceMinor / 100 : a.price) || 0;
+      const priceB = (b.fromPriceMinor !== undefined ? b.fromPriceMinor / 100 : b.price) || 0;
+      const stockA = a.totalStock !== undefined ? a.totalStock : (a.stock || 0);
+      const stockB = b.totalStock !== undefined ? b.totalStock : (b.stock || 0);
+
+      if (sortBy === 'price-asc') return priceA - priceB;
+      if (sortBy === 'price-desc') return priceB - priceA;
+      if (sortBy === 'stock') return stockB - stockA;
       return 0; // Default featured
     });
-  }, [products, searchQuery, selectedCategory, inStockOnly, rohsCompliant, sortBy]);
+  }, [products, searchQuery, inStockOnly, rohsCompliant, sortBy]);
 
-  const isGridView = searchQuery || selectedCategory;
+  const isGridView = viewMode === 'grid' || Boolean(searchQuery) || Boolean(selectedCategory);
 
   // Sidebar Filter Form Content
   const sidebarFilterContent = (
@@ -382,29 +283,41 @@ const ProductListing = () => {
         <Divider sx={{ mb: 1.5 }} />
         
         <Box sx={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {PRODUCT_INDEX_DATA.map((cat) => (
-            <Link
-              key={cat.name}
-              onClick={() => {
-                handleCategoryScroll(cat.name);
-                if (isMobile) setMobileFilterOpen(false);
-              }}
-              sx={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: 'text.secondary',
-                cursor: 'pointer',
-                textDecoration: 'none',
-                py: 0.2,
-                '&:hover': {
-                  color: 'primary.main',
-                  textDecoration: 'underline'
-                }
-              }}
-            >
-              {cat.icon} {cat.name}
-            </Link>
-          ))}
+          {productIndexData.map((cat) => {
+            const isSelected = selectedCategory && (selectedCategory.toLowerCase() === (cat.slug || '').toLowerCase() || selectedCategory.toLowerCase() === (cat.name || '').toLowerCase());
+            return (
+              <Link
+                key={cat.id || cat.name}
+                onClick={() => {
+                  handleCategorySelect(cat);
+                  if (isMobile) setMobileFilterOpen(false);
+                }}
+                sx={{
+                  fontSize: '0.85rem',
+                  fontWeight: isSelected ? 800 : 600,
+                  color: isSelected ? 'primary.main' : 'text.secondary',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  py: 0.4,
+                  px: 1,
+                  borderRadius: 1,
+                  bgcolor: isSelected ? 'primary.50' : 'transparent',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  '&:hover': {
+                    color: 'primary.main',
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                <span>{cat.icon} {cat.name}</span>
+                {cat.productCount > 0 && (
+                  <Chip label={cat.productCount} size="small" sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }} />
+                )}
+              </Link>
+            );
+          })}
         </Box>
       </Box>
     </Box>
@@ -421,19 +334,41 @@ const ProductListing = () => {
       {/* Page Title */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, gap: 2, flexWrap: 'wrap' }}>
         <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', fontFamily: '"Outfit", sans-serif', letterSpacing: -0.5 }}>
-          {isGridView ? "Product Catalog" : "Product Index"}
+          {isGridView ? "Product Catalog" : "Category Index"}
         </Typography>
         
-        {/* Mobile Filter Trigger */}
-        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => setMobileFilterOpen(true)}
-            startIcon={<FilterListIcon />}
-            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
-          >
-            Filters
-          </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {/* View Toggle */}
+          <Box sx={{ display: 'flex', gap: 0.5, bgcolor: 'action.hover', p: 0.5, borderRadius: 2 }}>
+            <Button
+              size="small"
+              variant={isGridView ? 'contained' : 'text'}
+              onClick={() => setViewMode('grid')}
+              sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none', px: 2 }}
+            >
+              All Products
+            </Button>
+            <Button
+              size="small"
+              variant={!isGridView ? 'contained' : 'text'}
+              onClick={() => { setViewMode('grouped'); handleResetAllFilters(); }}
+              sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none', px: 2 }}
+            >
+              Category Index
+            </Button>
+          </Box>
+
+          {/* Mobile Filter Trigger */}
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <Button 
+              variant="outlined" 
+              onClick={() => setMobileFilterOpen(true)}
+              startIcon={<FilterListIcon />}
+              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+            >
+              Filters
+            </Button>
+          </Box>
         </Box>
       </Box>
 
@@ -532,8 +467,8 @@ const ProductListing = () => {
 
               {/* Grid Content */}
               {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
-                  <CircularProgress />
+                <Box sx={{ py: 3 }}>
+                  <SkeletonLoader type="card" count={8} />
                 </Box>
               ) : error ? (
                 <Box sx={{ textAlign: 'center', py: 10 }}>
@@ -546,24 +481,19 @@ const ProductListing = () => {
                   gap: 3 
                 }}>
                   {sortedProducts.map((product) => (
-                    <RouterLink to={`/product/${product.id}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }} key={product.id}>
+                    <RouterLink to={`/product/${product.slug || product.id}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }} key={product.id || product.slug}>
                       <ProductCard product={product} sx={{ height: '100%' }} />
                     </RouterLink>
                   ))}
                 </Box>
               ) : (
-                <Paper 
-                  elevation={0} 
-                  sx={{ p: 8, border: '1px solid', borderColor: 'divider', borderRadius: 2, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
-                >
-                  <ShoppingBagIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
-                  <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    No products found matching your active criteria.
-                  </Typography>
-                  <Button variant="outlined" size="small" onClick={handleResetAllFilters} sx={{ textTransform: 'none', fontWeight: 700 }}>
-                    Reset Filters & View Index
-                  </Button>
-                </Paper>
+                <EmptyState
+                  title="No Products Matching Filters"
+                  description="We couldn't locate items corresponding to your active search keywords or filter criteria."
+                  icon="search"
+                  actionText="Reset All Filters"
+                  onAction={handleResetAllFilters}
+                />
               )}
             </Box>
           ) : (
@@ -571,19 +501,21 @@ const ProductListing = () => {
             // =========================================================================
             // CASE B: Index View (Default grouped view)
             // =========================================================================
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {PRODUCT_INDEX_DATA.map((cat) => (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {productIndexData.map((cat) => (
                 <Box 
-                  key={cat.name} 
+                  key={cat.id || cat.name}  
                   id={`category-section-${cat.name}`} 
                   sx={{ 
                     border: '1px solid', 
                     borderColor: 'divider', 
-                    borderRadius: 2, 
+                    borderRadius: 3, 
                     overflow: 'hidden',
-                    scrollMarginTop: 120, // Critical for smooth scroll offsets
+                    scrollMarginTop: 120,
                     bgcolor: 'background.paper',
-                    '&:hover': { boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                    transition: 'all 0.2s',
+                    '&:hover': { boxShadow: '0 8px 25px rgba(0,0,0,0.06)' }
                   }}
                 >
                   {/* Category Header Bar */}
@@ -591,60 +523,40 @@ const ProductListing = () => {
                     sx={{ 
                       bgcolor: 'primary.main', 
                       color: 'white', 
-                      px: 3, 
-                      py: 2, 
+                      px: 3.5, 
+                      py: 2.5, 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: 1.5 
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 2
                     }}
                   >
-                    <Typography sx={{ fontSize: '1.4rem' }}>{cat.icon}</Typography>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, letterSpacing: 0.5 }}>
-                      {cat.name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography sx={{ fontSize: '1.6rem' }}>{cat.icon}</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.5, fontFamily: '"Outfit", sans-serif' }}>
+                        {cat.name}
+                      </Typography>
+                    </Box>
+                    <Chip 
+                      label={`${cat.productCount || 0} Products`} 
+                      sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 700, px: 1.5 }} 
+                    />
                   </Box>
                   
-                  {/* Subcategories Details Container */}
-                  <Box sx={{ p: 3 }}>
-                    <Grid container spacing={4}>
-                      {cat.subcategories.map((sub) => (
-                        <Grid item xs={12} sm={6} md={4} key={sub.name}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                            {/* Subcategory Header */}
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main' }}>
-                              {sub.name}
-                            </Typography>
-                            
-                            {/* Sub-subcategory Items list */}
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              {sub.items.map((item) => (
-                                <Box key={item.name} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                  <Link
-                                    onClick={() => handleIndexItemClick(cat.name, item.name)}
-                                    sx={{
-                                      fontSize: '0.8rem',
-                                      fontWeight: 600,
-                                      color: 'text.secondary',
-                                      cursor: 'pointer',
-                                      textDecoration: 'none',
-                                      '&:hover': {
-                                        color: 'secondary.dark',
-                                        textDecoration: 'underline'
-                                      }
-                                    }}
-                                  >
-                                    {item.name}
-                                  </Link>
-                                  <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600, ml: 1 }}>
-                                    ({item.count})
-                                  </Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
+                  {/* Category Content */}
+                  <Box sx={{ p: 3.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 600, fontSize: '0.95rem', fontWeight: 500 }}>
+                      Browse our high-quality inventory of {cat.name}. Check real-time stock levels, volume price breaks, and request immediate quotes or delivery.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      onClick={() => handleCategorySelect(cat)}
+                      sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, textTransform: 'none', boxShadow: '0 4px 12px rgba(25, 118, 210, 0.2)' }}
+                    >
+                      Explore {cat.name} ➔
+                    </Button>
                   </Box>
                 </Box>
               ))}

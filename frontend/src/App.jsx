@@ -16,6 +16,7 @@ import ProductListing from './pages/ProductListing';
 import ProductDetails from './pages/ProductDetails';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
+import PaymentGateway from './pages/PaymentGateway';
 
 // User Pages
 import UserDashboard from './pages/user/UserDashboard';
@@ -93,9 +94,10 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
-          {/* Cart & Checkout */}
+          {/* E-Commerce Cart, Checkout & Payment Gateway */}
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/payment" element={<PaymentGateway />} />
         </Route>
 
         {/* CUSTOMER DASHBOARD ROUTES */}

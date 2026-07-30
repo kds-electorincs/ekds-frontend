@@ -1,12 +1,25 @@
-import React from 'react';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button } from '@mui/material';
-
-const mockPayments = [
-  { id: 'INV-201', orderId: 'ORD-001', dueDate: '2023-11-15', amount: 1250.00 },
-];
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, CircularProgress } from '@mui/material';
+import { userService } from '../../services/apiServices';
 
 const PendingPayments = () => {
-  return (
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setLoading(true);
+        const res = await userService.getPendingPayments();
+        setPayments(res?.data || res?.payments || res || []);
+      } catch (err) {
+        console.error("Failed to fetch pending payments:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPayments();
+  }, []);
     <Box>
       <Typography variant="h5" fontWeight={700} mb={3}>Pending Payments</Typography>
 
@@ -22,12 +35,16 @@ const PendingPayments = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {mockPayments.length > 0 ? mockPayments.map((pay) => (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center"><CircularProgress size={24} /></TableCell>
+              </TableRow>
+            ) : payments.length > 0 ? payments.map((pay) => (
               <TableRow key={pay.id}>
                 <TableCell fontWeight={600}>{pay.id}</TableCell>
                 <TableCell color="primary.main">{pay.orderId}</TableCell>
                 <TableCell sx={{ color: 'error.main', fontWeight: 600 }}>{pay.dueDate}</TableCell>
-                <TableCell fontWeight={700}>${pay.amount.toFixed(2)}</TableCell>
+                <TableCell fontWeight={700}>${Number(pay.amount).toFixed(2)}</TableCell>
                 <TableCell>
                   <Button variant="contained" size="small" color="primary">Pay Now</Button>
                 </TableCell>

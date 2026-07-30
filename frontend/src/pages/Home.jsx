@@ -11,7 +11,6 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ArrowRightAlt as ArrowRightAltIcon,
-  AddShoppingCart as AddShoppingCartIcon,
   ArrowForward as ArrowForwardIcon,
   Settings as SettingsIcon,
   Engineering as EngineeringIcon,
@@ -22,8 +21,8 @@ import {
 } from '@mui/icons-material';
 import StarIcon from '@mui/icons-material/Star';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
-import { MOCK_CATEGORIES, MOCK_PRODUCTS } from '../constants/mockData';
+import { publicService } from '../services/apiServices';
+import { CircularProgress } from '@mui/material';
 
 // Auto-playing Carousel Banners Data
 const CAROUSEL_SLIDES = [
@@ -56,10 +55,27 @@ const CAROUSEL_SLIDES = [
 const Home = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [categories, setCategories] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchHomeData = async () => {
+      try {
+        setLoading(true);
+        const response = await publicService.getHomeData();
+        // Depending on backend structure, adjust the accessors:
+        setCategories(response?.categories || response?.data?.categories || []);
+        setFeaturedProducts(response?.featuredProducts || response?.data?.featuredProducts || response?.products || response?.data?.products || []);
+      } catch (error) {
+        console.error('Failed to load home data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHomeData();
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length);
     }, 6000);
@@ -480,7 +496,15 @@ const Home = () => {
         </Box>
 
         <Grid container spacing={3}>
-          {MOCK_CATEGORIES.map((cat) => (
+          {loading ? (
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          ) : categories.length === 0 ? (
+            <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">No categories found.</Typography>
+            </Box>
+          ) : categories.map((cat) => (
             <Grid item xs={12} sm={6} md={3} key={cat.id}>
               <Card 
                 elevation={0}
@@ -507,10 +531,13 @@ const Home = () => {
                     component="img"
                     height="160"
                     image={
-                      cat.name.includes("Tool") ? "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&q=80&w=500" :
+                      cat.imageUrl || (
+                      cat.name?.includes("Tool") ? "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&q=80&w=500" :
+
                       cat.name.includes("Electrical") ? "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&q=80&w=500" :
-                      cat.name.includes("Safety") ? "https://images.unsplash.com/photo-1513467535987-fd81bc7d62f8?auto=format&fit=crop&q=80&w=500" :
+                      cat.name?.includes("Safety") ? "https://images.unsplash.com/photo-1513467535987-fd81bc7d62f8?auto=format&fit=crop&q=80&w=500" :
                       "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&q=80&w=500"
+                      )
                     }
                     alt={cat.name}
                     sx={{ 
@@ -533,7 +560,7 @@ const Home = () => {
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                     }}
                   >
-                    {cat.icon}
+                    {cat.icon || <SettingsIcon fontSize="inherit" />}
                   </Box>
                 </Box>
 
@@ -542,7 +569,7 @@ const Home = () => {
                     {cat.name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    {cat.count} Products Available
+                    {cat.count || 0} Products Available
                   </Typography>
                 </CardContent>
               </Card>
@@ -575,7 +602,15 @@ const Home = () => {
 
         {/* Product Cards Grid */}
         <Grid container spacing={3}>
-          {MOCK_PRODUCTS.slice(0, 4).map((product) => (
+          {loading ? (
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          ) : featuredProducts.length === 0 ? (
+            <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">No featured products found.</Typography>
+            </Box>
+          ) : featuredProducts.slice(0, 4).map((product) => (
             <Grid item xs={12} sm={6} md={3} key={product.id}>
               <Card 
                 elevation={0}
@@ -688,14 +723,12 @@ const Home = () => {
                       </Typography>
                     </Box>
 
-                    {/* Add to Cart Button */}
+                    {/* View Details Button */}
                     <Button
                       variant="contained"
-                      disabled={product.stock === 0}
                       onClick={(e) => {
                         e.stopPropagation();
-                        e.preventDefault();
-                        addToCart(product, 1);
+                        navigate(`/product/${product.id}`);
                       }}
                       sx={{ 
                         minWidth: 40,
@@ -707,7 +740,7 @@ const Home = () => {
                         '&:hover': { bgcolor: 'primary.dark' }
                       }}
                     >
-                      <AddShoppingCartIcon fontSize="small" />
+                      <ArrowForwardIcon fontSize="small" />
                     </Button>
                   </Box>
                 </CardContent>

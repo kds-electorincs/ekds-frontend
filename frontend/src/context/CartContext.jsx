@@ -3,6 +3,30 @@ import notification from '../utils/notification';
 
 const CartContext = createContext();
 
+// Sample data for testing checkout flow
+const SAMPLE_CART_DATA = [
+  {
+    id: 'sample-1',
+    name: 'Industrial Grade Multimeter Pro',
+    price: 149.99,
+    image: 'https://placehold.co/200x200?text=Multimeter',
+    quantity: 1,
+    brand: 'TechMeasure',
+    category: 'Test Equipment',
+    stock: 50
+  },
+  {
+    id: 'sample-2',
+    name: 'Arduino Uno R3 Compatible Board',
+    price: 24.50,
+    image: 'https://placehold.co/200x200?text=Arduino',
+    quantity: 2,
+    brand: 'MakerTech',
+    category: 'Microcontrollers',
+    stock: 120
+  }
+];
+
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -12,7 +36,10 @@ export const CartProvider = ({ children }) => {
     const savedCart = sessionStorage.getItem('cart');
     if (savedCart) {
       try {
-        setCartItems(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed)) {
+          setCartItems(parsed);
+        }
       } catch (error) {
         console.error('Failed to parse cart from local storage', error);
       }
@@ -24,7 +51,7 @@ export const CartProvider = ({ children }) => {
     sessionStorage.setItem('cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = (product, quantity = 1, openDrawer = true) => {
     const existingItem = cartItems.find(item => item.id === product.id);
     
     if (existingItem) {
@@ -37,6 +64,9 @@ export const CartProvider = ({ children }) => {
     } else {
       notification.success(`Added ${product.name} to cart`);
       setCartItems(prev => [...prev, { ...product, quantity }]);
+    }
+    if (openDrawer) {
+      setIsCartOpen(true);
     }
   };
 

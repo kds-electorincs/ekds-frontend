@@ -17,6 +17,25 @@ export const authService = {
 export const userService = {
   getProfile: async () => await axiosInstance.get('/users/me'),
   updateProfile: async (userData) => await axiosInstance.put('/users/profile', userData),
+  getFavorites: async () => await axiosInstance.get('/users/me/favorites'),
+  getQuotations: async () => await axiosInstance.get('/users/me/quotations'),
+  getPendingPayments: async () => await axiosInstance.get('/users/me/pending-payments'),
+  getOrders: async () => await axiosInstance.get('/users/me/orders'),
+
+  // Address Management (Section 6.2)
+  getAddresses: async () => await axiosInstance.get('/users/me/addresses'),
+  getAddressById: async (id) => await axiosInstance.get(`/users/me/addresses/${id}`),
+  createAddress: async (addressData) => await axiosInstance.post('/users/me/addresses', addressData),
+  // Note: PUT is a full replace, not PATCH. Always send complete address object.
+  updateAddress: async (id, addressData) => await axiosInstance.put(`/users/me/addresses/${id}`, addressData),
+  deleteAddress: async (id) => await axiosInstance.delete(`/users/me/addresses/${id}`),
+  setDefaultAddress: async (id) => await axiosInstance.post(`/users/me/addresses/${id}/default`),
+
+  // Tax Details Management (Section 6.3)
+  getTaxDetails: async (addressId) => await axiosInstance.get(`/users/me/addresses/${addressId}/tax-details`),
+  createTaxDetail: async (addressId, taxData) => await axiosInstance.post(`/users/me/addresses/${addressId}/tax-details`, taxData),
+  updateTaxDetail: async (addressId, id, taxData) => await axiosInstance.put(`/users/me/addresses/${addressId}/tax-details/${id}`, taxData),
+  deleteTaxDetail: async (addressId, id) => await axiosInstance.delete(`/users/me/addresses/${addressId}/tax-details/${id}`),
 };
 
 
@@ -34,11 +53,11 @@ export const publicService = {
 // ==========================================
 export const productService = {
   // Get products with filters (search, category, price min/max, sort, page, limit)
-  getAllProducts: async (params) => await axiosInstance.get('/products', { params }),
-  getProductById: async (id) => await axiosInstance.get(`/products/${id}`),
+  getAllProducts: async (params) => await axiosInstance.get('/store/products', { params }),
+  getProductById: async (id) => await axiosInstance.get(`/store/products/${id}`),
 
   // For filter sidebars
-  getCategories: async () => await axiosInstance.get('/categories'),
+  getCategories: async (params) => await axiosInstance.get('/store/categories', { params }),
   getBrands: async () => await axiosInstance.get('/brands'),
 
   // Admin/Dashboard product management
@@ -48,16 +67,6 @@ export const productService = {
 };
 
 
-// ==========================================
-// Cart Services
-// ==========================================
-export const cartService = {
-  getCart: async () => await axiosInstance.get('/cart'),
-  addToCart: async (productId, quantity) => await axiosInstance.post('/cart/add', { productId, quantity }),
-  updateCartItem: async (productId, quantity) => await axiosInstance.put('/cart/update', { productId, quantity }),
-  removeFromCart: async (productId) => await axiosInstance.delete(`/cart/remove/${productId}`),
-  clearCart: async () => await axiosInstance.delete('/cart/clear'),
-};
 
 
 // ==========================================
@@ -95,8 +104,9 @@ export const dashboardService = {
 // Public Category Services
 // ==========================================
 export const categoryPublicService = {
-  listCategories: async (params) => await axiosInstance.get('/categories', { params }),
-  getCategory: async (id) => await axiosInstance.get(`/categories/${id}`),
+  listCategories: async (params) => await axiosInstance.get('/store/categories', { params }),
+  getCategory: async (slugOrId) => await axiosInstance.get(`/store/categories/${slugOrId}`),
+  getCategoryProducts: async (slug, params) => await axiosInstance.get(`/store/categories/${slug}/products`, { params }),
 };
 
 // ==========================================
@@ -132,8 +142,9 @@ export const attributeAdminService = {
 // Public Product Services
 // ==========================================
 export const productPublicService = {
-  listProducts: async (params) => await axiosInstance.get('/products', { params }),
-  getProduct: async (id) => await axiosInstance.get(`/products/${id}`),
+  listProducts: async (params) => await axiosInstance.get('/store/products', { params }),
+  getProduct: async (slugOrId, params) => await axiosInstance.get(`/store/products/${slugOrId}`, { params }),
+  getProductBySlug: async (slug, params) => await axiosInstance.get(`/store/products/${slug}`, { params }),
 };
 
 // ==========================================

@@ -3,7 +3,8 @@ import { toast } from 'react-toastify';
 
 // Create base instance
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://d33txvk614c5de.cloudfront.net',
+  // baseURL: import.meta.env.VITE_API_BASE_URL || 'https://d33txvk614c5de.cloudfront.net',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -62,10 +63,10 @@ axiosClient.interceptors.response.use(
 
     const { status, data } = error.response;
 
-    // Handle 401 Unauthorized (Token Expiry)
-    if (status === 401 && !originalRequest._retry) {
+    // Handle 401 Unauthorized or 403 on protected endpoints (Known Backend Quirk for /users/me/**)
+    const isProtectedCall = originalRequest.url && originalRequest.url.includes('/users/me');
+    if ((status === 401 || (status === 403 && isProtectedCall)) && !originalRequest._retry) {
       if (originalRequest.url.includes('/auth/refresh') || originalRequest.url.includes('/auth/login')) {
-        // Refresh token itself is expired, or login credentials invalid
         return Promise.reject(error);
       }
 

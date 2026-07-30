@@ -7,7 +7,6 @@ import {
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
-  ShoppingCart as ShoppingCartIcon,
   Search as SearchIcon,
   FileUpload as FileUploadIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -18,125 +17,61 @@ import {
   Dashboard as DashboardIcon,
   Person as PersonIcon,
   ListAlt as ListAltIcon,
-  ArrowForwardIos as ArrowForwardIosIcon
+  ArrowForwardIos as ArrowForwardIosIcon,
+  ShoppingCart as ShoppingCartIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCart } from '../context/CartContext';
 import CartDrawer from './cart/CartDrawer';
-
-// Hierarchical Category Data for Mega Menu (DigiKey Style)
-const MEGA_MENU_DATA = [
-  {
-    name: "Semiconductors",
-    active: true,
-    subcategories: [
-      {
-        name: "Isolators",
-        items: ["Digital Isolators", "Isolators - Gate Drivers", "Optoisolators - Logic Output", "Optoisolators - Transistor", "Optoisolators - Triac Output", "Special Purpose"]
-      },
-      {
-        name: "Integrated Circuits (ICs)",
-        items: ["Embedded Microcontrollers", "Linear Amplifiers", "Memory Chips", "Power Management PMIC"]
-      },
-      {
-        name: "Discrete Semiconductors",
-        items: ["Diodes - Rectifiers", "Transistors - FETs, MOSFETs", "Thyristors - SCRs", "Transistors - Bipolar BJT"]
-      }
-    ]
-  },
-  {
-    name: "Industrial Tools",
-    active: true,
-    subcategories: [
-      {
-        name: "Power Tools",
-        items: ["Drill Machines", "Angle Grinders", "Demolition Hammers", "Heat Guns"]
-      },
-      {
-        name: "Hand Tools",
-        items: ["Wrenches & Sockets", "Screwdrivers", "Pliers & Cutters", "Tool Sets"]
-      },
-      {
-        name: "Abrasives",
-        items: ["Grinding Wheels", "Sanding Discs", "Cut-off Wheels"]
-      }
-    ]
-  },
-  {
-    name: "Safety Gear",
-    active: true,
-    subcategories: [
-      {
-        name: "Head Protection",
-        items: ["Professional Hard Hats", "Safety Helmets", "Bump Caps"]
-      },
-      {
-        name: "Protective Wear",
-        items: ["Safety Vests", "Steel Toe Work Boots", "Safety Glasses", "Ear Muffs"]
-      },
-      {
-        name: "Hand Protection",
-        items: ["Cut Resistant Gloves", "Chemical Resistant Gloves", "Leather Work Gloves"]
-      }
-    ]
-  },
-  {
-    name: "Electrical Supplies",
-    active: true,
-    subcategories: [
-      {
-        name: "LED & Lighting",
-        items: ["Industrial LED Floodlights", "Warehouse High Bay Lights", "LED Strips & Drivers"]
-      },
-      {
-        name: "Switches & Relays",
-        items: ["Rocker Switches", "Solid State Relays", "Limit Switches", "Push Buttons"]
-      },
-      {
-        name: "Circuit Protection",
-        items: ["Fuses & Fuse Holders", "Circuit Breakers", "Surge Protectors"]
-      }
-    ]
-  },
-  {
-    name: "Cables & Wires",
-    active: false,
-    subcategories: [
-      {
-        name: "Multi-Conductor Cables",
-        items: ["Shielded Cables", "Coaxial Cables", "Fiber Optic Cables"]
-      }
-    ]
-  },
-  {
-    name: "Connectors & Terminals",
-    active: false,
-    subcategories: [
-      {
-        name: "Circular Connectors",
-        items: ["Circular Shells", "Circular Contacts", "Circular Cable Assemblies"]
-      }
-    ]
-  }
-];
+import { categoryPublicService } from '../services/apiServices';
 
 const Navbar = () => {
+  const { cartItemCount, toggleCartDrawer } = useCart();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
   
   // Mega Menu State
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
-  const [hoveredCategory, setHoveredCategory] = useState(MEGA_MENU_DATA[0]);
-  const [hoveredSubCategory, setHoveredSubCategory] = useState(MEGA_MENU_DATA[0].subcategories[0]);
+  const [megaMenuData, setMegaMenuData] = useState([]);
+  const [hoveredCategory, setHoveredCategory] = useState(null);
+  const [hoveredSubCategory, setHoveredSubCategory] = useState(null);
+
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryPublicService.listCategories();
+        const data = response?.data?.content || response?.data || response?.categories || response || [];
+        // Map the backend CategoryResponse/SegmentResponse to MEGA_MENU format
+        const formattedData = (Array.isArray(data) ? data : []).map(cat => ({
+          name: cat.name,
+          active: cat.active,
+          subcategories: (cat.segments || cat.subcategories || []).map(seg => ({
+            name: seg.name,
+            items: (seg.attributes || seg.items || []).map(attr => attr.attrKey || attr.name || attr)
+          }))
+        }));
+        
+        setMegaMenuData(formattedData);
+        if (formattedData.length > 0) {
+          setHoveredCategory(formattedData[0]);
+          if (formattedData[0].subcategories?.length > 0) {
+            setHoveredSubCategory(formattedData[0].subcategories[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories for mega menu:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   
-  const { cartItemCount, toggleCartDrawer } = useCart();
   const { user, logout } = useAuth();
   const { currency, setCurrency } = useCurrency();
 
@@ -529,33 +464,18 @@ const Navbar = () => {
               </Box>
             ) : null}
 
-            {/* Cart Badge with Count & Subtext */}
-            <Button
-              onClick={toggleCartDrawer}
-              startIcon={
-                <Badge badgeContent={cartItemCount} color="error">
+            {/* Shopping Cart Button */}
+            <Tooltip title="View Cart">
+              <IconButton 
+                color="primary" 
+                onClick={toggleCartDrawer}
+                sx={{ ml: { xs: 0.5, sm: 1 }, bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' }, p: 1.2, borderRadius: 2 }}
+              >
+                <Badge badgeContent={cartItemCount || 0} color="secondary" sx={{ '& .MuiBadge-badge': { fontWeight: 800 } }}>
                   <ShoppingCartIcon />
                 </Badge>
-              }
-              sx={{ 
-                color: 'primary.main', 
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '0.875rem',
-                ml: { xs: 0.5, md: 0 }
-              }}
-            >
-              {!isMobile && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', ml: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, lineHeight: 1 }}>
-                    Shopping
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1, mt: 0.2 }}>
-                    {cartItemCount} item(s)
-                  </Typography>
-                </Box>
-              )}
-            </Button>
+              </IconButton>
+            </Tooltip>
 
             {/* Mobile Menu Icon */}
             {isMobile && (
@@ -658,7 +578,7 @@ const Navbar = () => {
         {/* ========================================================================= */}
         {/* Products Mega Menu Dropdown Panel (DigiKey Style) */}
         {/* ========================================================================= */}
-        {!isMobile && isMegaMenuOpen && (
+        {!isMobile && isMegaMenuOpen && megaMenuData.length > 0 && hoveredCategory && (
           <Paper
             elevation={12}
             onMouseEnter={() => setIsMegaMenuOpen(true)}
@@ -696,8 +616,8 @@ const Navbar = () => {
                 py: 1
               }}
             >
-              {MEGA_MENU_DATA.map((cat) => {
-                const isHovered = hoveredCategory.name === cat.name;
+              {megaMenuData.map((cat) => {
+                const isHovered = hoveredCategory?.name === cat.name;
                 return (
                   <ListItemButton
                     key={cat.name}
@@ -738,8 +658,8 @@ const Navbar = () => {
                 py: 1
               }}
             >
-              {hoveredCategory.subcategories.map((sub) => {
-                const isHovered = hoveredSubCategory.name === sub.name;
+              {hoveredCategory?.subcategories?.map((sub) => {
+                const isHovered = hoveredSubCategory?.name === sub.name;
                 return (
                   <ListItemButton
                     key={sub.name}
@@ -777,11 +697,11 @@ const Navbar = () => {
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 850, color: 'primary.main', mb: 2.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {hoveredSubCategory.name}
+                {hoveredSubCategory?.name}
               </Typography>
               
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {hoveredSubCategory.items.map((item) => (
+                {hoveredSubCategory?.items?.map((item) => (
                   <Typography
                     key={item}
                     onClick={() => {
@@ -789,14 +709,14 @@ const Navbar = () => {
                       // Construct direct query redirect
                       let queryStr = "";
                       const itemWord = item.split(' ')[0]; // Take first word for search simplicity
-                      if (hoveredCategory.name.includes("Tool")) {
-                        queryStr = `?category=Industrial%20Tools&search=${encodeURIComponent(itemWord)}`;
-                      } else if (hoveredCategory.name.includes("Safety")) {
-                        queryStr = `?category=Safety%20Gear&search=${encodeURIComponent(itemWord)}`;
-                      } else if (hoveredCategory.name.includes("Electrical")) {
-                        queryStr = `?category=Electrical%20Supplies&search=${encodeURIComponent(itemWord)}`;
+                      if (hoveredCategory?.name?.includes("Tool")) {
+                        queryStr = `?category=${encodeURIComponent(hoveredCategory.name)}&search=${encodeURIComponent(itemWord)}`;
+                      } else if (hoveredCategory?.name?.includes("Safety")) {
+                        queryStr = `?category=${encodeURIComponent(hoveredCategory.name)}&search=${encodeURIComponent(itemWord)}`;
+                      } else if (hoveredCategory?.name?.includes("Electrical")) {
+                        queryStr = `?category=${encodeURIComponent(hoveredCategory.name)}&search=${encodeURIComponent(itemWord)}`;
                       } else {
-                        queryStr = `?search=${encodeURIComponent(itemWord)}`;
+                        queryStr = `?category=${encodeURIComponent(hoveredCategory?.name || '')}&search=${encodeURIComponent(itemWord)}`;
                       }
                       navigate(`/products${queryStr}`);
                     }}
@@ -831,6 +751,8 @@ const Navbar = () => {
       >
         {drawer}
       </Drawer>
+      
+      {/* Slide-out Cart Drawer */}
       <CartDrawer />
     </>
   );

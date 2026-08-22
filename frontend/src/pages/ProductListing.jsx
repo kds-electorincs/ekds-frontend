@@ -1,579 +1,440 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Grid, Typography, Box, Breadcrumbs, Link, IconButton, 
-  Drawer, CircularProgress, Paper, InputBase, Checkbox, 
-  FormControlLabel, FormGroup, Button, Divider, Chip, MenuItem, Select, FormControl, InputLabel
+  Grid, Typography, Box, Breadcrumbs, IconButton, Drawer, CircularProgress, 
+  Paper, InputBase, Checkbox, FormControlLabel, FormGroup, Button, Divider, 
+  Chip, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import { 
   FilterList as FilterListIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
   Replay as ReplayIcon,
-  ShoppingBag as ShoppingBagIcon
+  NavigateNext as NavigateNextIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useSearchParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { productPublicService, categoryPublicService } from '../services/apiServices';
+import { productPublicService, categoryPublicService, searchService } from '../services/apiServices';
 import SkeletonLoader from '../components/common/SkeletonLoader';
 import EmptyState from '../components/common/EmptyState';
+import { useCurrency } from '../context/CurrencyContext';
 
 const ProductListing = () => {
   const [products, setProducts] = useState([]);
-  const [productIndexData, setProductIndexData] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Search parameters syncing
+  // URL query parameter synchronization
   const searchParam = searchParams.get('search') || '';
   const categoryParam = searchParams.get('category') || '';
+  const filterParam = searchParams.get('filter') || '';
 
   const [searchQuery, setSearchQuery] = useState(searchParam);
   const [selectedCategory, setSelectedCategory] = useState(categoryParam);
   
-  // Custom sidebar filters
+  // Interactive Parametric Filters
   const [searchWithin, setSearchWithin] = useState('');
-  const [inStockOnly, setInStockOnly] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(filterParam === 'in-stock');
   const [rohsCompliant, setRohsCompliant] = useState(false);
+  const [selectedBrands, setSelectedBrands] = useState([]);
   const [sortBy, setSortBy] = useState('featured');
+  const [pageSize, setPageSize] = useState('25');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
+  const { currency } = useCurrency();
+  // Default to INR until the currency context resolves (guide §3/§4) — the
+  // /currencies call is in flight on first mount, so this component must
+  // not wait on it or omit currency on /api/search/* (required there).
+  const activeCurrency = currency || 'INR';
 
-  // Fetch categories once on mount
+  // Load category classifications
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await categoryPublicService.listCategories();
         const data = response?.content || response?.data?.content || response?.data || response?.categories || response || [];
-        const formattedData = (Array.isArray(data) ? data : []).map(cat => ({
-          id: cat.id,
-          name: cat.name || '',
-          slug: cat.slug || (cat.name || '').toLowerCase().replace(/\s+/g, '-'),
-          icon: cat.icon || "📁",
-          productCount: cat.productCount || 0,
-          subcategories: (cat.segments || cat.subcategories || []).map(seg => ({
-            name: seg.name,
-            items: (seg.attributes || seg.items || []).map(attr => ({
-              name: attr.attrKey || attr.name || attr,
-              count: attr.count || 0
-            }))
-          }))
-        }));
-        setProductIndexData(formattedData);
+        setCategories(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Failed to fetch categories for index:", err);
+        console.error("Failed to retrieve categories:", err);
+        setCategories([]);
       }
     };
     fetchCategories();
   }, []);
 
-  // Fetch products whenever selectedCategory changes
+  // Load product catalog from Meilisearch Universal Search / Backend API
   useEffect(() => {
+    // Runs the branch selection for a given currency — factored out so a 503
+    // (no live FX rate yet, guide §8, transient) can retry the same shape of
+    // request in INR instead of failing the whole listing.
+    const fetchForCurrency = async (curr) => {
+      let response;
+      const qParam = searchQuery || searchWithin || undefined;
+      const manufacturerParam = selectedBrands.length > 0 ? selectedBrands[0] : undefined;
+      const inStockParam = inStockOnly ? true : undefined;
+
+      if (selectedCategory) {
+        const foundCat = categories.find(c =>
+          c.name?.toLowerCase() === selectedCategory.toLowerCase() ||
+          c.slug?.toLowerCase() === selectedCategory.toLowerCase() ||
+          String(c.id) === String(selectedCategory)
+        );
+        const slugToUse = foundCat ? (foundCat.slug || foundCat.name?.toLowerCase().replace(/\s+/g, '-')) : selectedCategory.toLowerCase().replace(/\s+/g, '-');
+        try {
+          if (qParam || manufacturerParam || inStockParam) {
+            response = await searchService.searchCategory(slugToUse, { q: qParam, manufacturer: manufacturerParam, inStock: inStockParam, currency: curr, size: Number(pageSize) || 50 });
+          } else {
+            response = await categoryPublicService.getCategoryProducts(slugToUse, { currency: curr, size: Number(pageSize) || 50 });
+          }
+        } catch (e) {
+          console.warn("Category search/product endpoint fallback:", e);
+          response = await productPublicService.listProducts({ currency: curr, size: Number(pageSize) || 50 });
+        }
+      } else if (qParam || manufacturerParam || inStockParam) {
+        try {
+          response = await searchService.search({ q: qParam, manufacturer: manufacturerParam, inStock: inStockParam, currency: curr, size: Number(pageSize) || 50 });
+        } catch (e) {
+          console.warn("Meilisearch offline, fallback to standard listing:", e);
+          response = await productPublicService.listProducts({ currency: curr, size: Number(pageSize) || 50 });
+        }
+      } else {
+        response = await productPublicService.listProducts({ currency: curr, size: Number(pageSize) || 50 });
+      }
+      return response;
+    };
+
     const fetchProducts = async () => {
       try {
         setLoading(true);
         let response;
-        if (selectedCategory) {
-          const foundCat = productIndexData.find(c => 
-            c.name?.toLowerCase() === selectedCategory.toLowerCase() || 
-            c.slug?.toLowerCase() === selectedCategory.toLowerCase() ||
-            String(c.id) === String(selectedCategory)
-          );
-          const slugToUse = foundCat ? foundCat.slug : selectedCategory.toLowerCase().replace(/\s+/g, '-');
-          try {
-            response = await categoryPublicService.getCategoryProducts(slugToUse, { currency: 'INR', size: 50 });
-          } catch (e) {
-            console.warn("Category product fetch fallback to all products:", e);
-            response = await productPublicService.listProducts({ currency: 'INR', size: 50 });
+        try {
+          response = await fetchForCurrency(activeCurrency);
+        } catch (priceErr) {
+          if (priceErr?.response?.status === 503 && activeCurrency !== 'INR') {
+            response = await fetchForCurrency('INR');
+          } else {
+            throw priceErr;
           }
-        } else {
-          response = await productPublicService.listProducts({ currency: 'INR', size: 50 });
         }
-        const items = response?.content || response?.data || response?.products || response || [];
+        const items = response?.content || response?.data?.content || response?.data || response?.products || response || [];
         setProducts(Array.isArray(items) ? items : []);
         setError(null);
       } catch (err) {
-        console.error("Failed to load products:", err);
-        setError("Failed to load products from server.");
+        console.error("Catalog API offline:", err);
+        setError("Unable to synchronize with live catalog database server.");
+        setProducts([]);
       } finally {
         setLoading(false);
       }
     };
-    
     fetchProducts();
-  }, [selectedCategory, productIndexData]);
+    // activeCurrency triggers a refetch (new prices) but every branch above
+    // keeps the same filter/search params, so the result set, its order,
+    // and its count are unaffected — only the displayed numbers change
+    // (guide §3: "currency means render prices in this currency, does not
+    // filter which products come back").
+  }, [selectedCategory, pageSize, searchQuery, searchWithin, inStockOnly, selectedBrands, categories, activeCurrency]);
 
-  // Sync state if URL parameters change (from navbar, mega menu, or other links)
   useEffect(() => {
-    const s = searchParams.get('search') || '';
-    const c = searchParams.get('category') || '';
-    setSearchQuery(s);
-    setSelectedCategory(c);
+    setSearchQuery(searchParams.get('search') || '');
+    setSelectedCategory(searchParams.get('category') || '');
+    setInStockOnly(searchParams.get('filter') === 'in-stock');
   }, [searchParams]);
 
-  // Handle Category select in sidebar or index cards
-  const handleCategorySelect = (cat) => {
-    const targetVal = cat.slug || cat.name;
-    setSelectedCategory(targetVal);
-    setSearchParams({ category: targetVal });
-    setViewMode('grid');
+  // Derive dynamic manufacturer list from loaded real inventory items
+  const availableBrands = useMemo(() => {
+    const brandSet = new Set();
+    products.forEach(p => {
+      if (p.brand) brandSet.add(p.brand);
+      else if (p.manufacturer) brandSet.add(p.manufacturer);
+    });
+    return Array.from(brandSet).sort();
+  }, [products]);
+
+  const handleBrandToggle = (brand) => {
+    setSelectedBrands(prev => 
+      prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand]
+    );
   };
 
-  // Handle Search Within sidebar filter submission
-  const handleSearchWithinSubmit = (e) => {
-    e.preventDefault();
-    if (searchWithin.trim()) {
-      setSearchQuery(searchWithin.trim());
-      const nextParams = {};
-      if (searchWithin.trim()) nextParams.search = searchWithin.trim();
-      if (selectedCategory) nextParams.category = selectedCategory;
-      setSearchParams(nextParams);
-      setSearchWithin('');
-    }
-  };
-
-  // Click handler for index items (links direct to grid view)
-  const handleIndexItemClick = (mainCat, subItemName) => {
-    // Standard B2B catalog mapping
-    let mappedCat = "";
-    if (mainCat.includes("Tool")) mappedCat = "Industrial Tools";
-    else if (mainCat.includes("Safety")) mappedCat = "Safety Gear";
-    else if (mainCat.includes("Electrical")) mappedCat = "Electrical Supplies";
-    else if (mainCat.includes("Office")) mappedCat = "Office Equipment";
-    else mappedCat = mainCat;
-
-    const firstWord = subItemName.split(' ')[0]; // Search for the product word (e.g. "Drill" under "Drill Machines")
-    
-    setSelectedCategory(mappedCat);
-    setSearchQuery(firstWord);
-    
-    const nextParams = {};
-    if (mappedCat) nextParams.category = mappedCat;
-    if (firstWord) nextParams.search = firstWord;
-    setSearchParams(nextParams);
-  };
-
-  // Filter Reset
-  const handleResetAllFilters = () => {
+  const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('');
     setSearchWithin('');
     setInStockOnly(false);
     setRohsCompliant(false);
+    setSelectedBrands([]);
     setSearchParams({});
   };
 
-  // Memoized Filtered and Sorted products list
-  const sortedProducts = React.useMemo(() => {
-    const filtered = products.filter(product => {
-      const name = (product.name || '').toLowerCase();
-      const mfr = (product.manufacturer || '').toLowerCase();
-      const mpn = (product.mpn || '').toLowerCase();
-      const cat = (typeof product.category === 'object' ? product.category?.name : product.category || '').toLowerCase();
+  const filteredAndSortedProducts = useMemo(() => {
+    const filtered = products.filter(p => {
+      const pName = (p.name || p.title || '').toLowerCase();
+      const pMfr = (p.brand || p.manufacturer || '').toLowerCase();
+      const pMpn = (p.partNumber || p.mpn || p.sku || '').toLowerCase();
       const query = (searchQuery || '').toLowerCase();
+      const within = (searchWithin || '').toLowerCase();
+      const stockVal = p.totalStock !== undefined ? p.totalStock : (p.stock || p.quantity || 0);
 
-      const matchesSearch = !searchQuery || 
-        name.includes(query) || 
-        mfr.includes(query) || 
-        mpn.includes(query) || 
-        cat.includes(query);
-      
-      const stock = product.totalStock !== undefined ? product.totalStock : (product.stock || 0);
-      const matchesStock = !inStockOnly || stock > 0;
-      const matchesRohs = !rohsCompliant || !!product.rohsCompliant; 
-      return matchesSearch && matchesStock && matchesRohs;
+      if (query && !pName.includes(query) && !pMfr.includes(query) && !pMpn.includes(query)) return false;
+      if (within && !pName.includes(within) && !pMfr.includes(within) && !pMpn.includes(within)) return false;
+      if (inStockOnly && stockVal <= 0) return false;
+      if (selectedBrands.length > 0 && !selectedBrands.includes(p.brand || p.manufacturer)) return false;
+      return true;
     });
 
     return [...filtered].sort((a, b) => {
-      const priceA = (a.fromPriceMinor !== undefined ? a.fromPriceMinor / 100 : a.price) || 0;
-      const priceB = (b.fromPriceMinor !== undefined ? b.fromPriceMinor / 100 : b.price) || 0;
+      // fromPriceScaled/priceScale (guide §2) — same scale on every item in
+      // one response, but read each item's own priceScale defensively.
+      const priceA = a.fromPriceScaled != null ? a.fromPriceScaled / 10 ** (a.priceScale ?? 4) : 0;
+      const priceB = b.fromPriceScaled != null ? b.fromPriceScaled / 10 ** (b.priceScale ?? 4) : 0;
       const stockA = a.totalStock !== undefined ? a.totalStock : (a.stock || 0);
       const stockB = b.totalStock !== undefined ? b.totalStock : (b.stock || 0);
 
-      if (sortBy === 'price-asc') return priceA - priceB;
-      if (sortBy === 'price-desc') return priceB - priceA;
-      if (sortBy === 'stock') return stockB - stockA;
-      return 0; // Default featured
+      if (sortBy === 'priceAsc') return priceA - priceB;
+      if (sortBy === 'priceDesc') return priceB - priceA;
+      if (sortBy === 'stockDesc') return stockB - stockA;
+      return (b.id || b._id || 0) - (a.id || a._id || 0); // Featured / Newest fallback
     });
-  }, [products, searchQuery, inStockOnly, rohsCompliant, sortBy]);
+  }, [products, searchQuery, searchWithin, inStockOnly, rohsCompliant, selectedBrands, sortBy]);
 
-  const isGridView = viewMode === 'grid' || Boolean(searchQuery) || Boolean(selectedCategory);
+  const totalResults = filteredAndSortedProducts.length;
+  const hasActiveFilters = Boolean(searchQuery || selectedCategory || searchWithin || inStockOnly || rohsCompliant || selectedBrands.length > 0);
 
-  // Sidebar Filter Form Content
-  const sidebarFilterContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
-      {/* 1. Filters Title */}
-      <Box>
-        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Filters
+  // Left Parametric Filter Panel Component
+  const filterPanel = (
+    <Box sx={{ p: 2.5, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderRadius: 1.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Parametric Filters
         </Typography>
-        <Divider />
+        {hasActiveFilters && (
+          <Button size="small" onClick={handleResetFilters} startIcon={<ReplayIcon sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.7rem', fontWeight: 700, minWidth: 'auto', p: 0 }}>
+            RESET
+          </Button>
+        )}
+      </Box>
+      <Divider sx={{ mb: 2.5 }} />
+
+      {/* 1. Search within results */}
+      <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1, textTransform: 'uppercase' }}>
+        Search Within Matches
+      </Typography>
+      <Box component="form" onSubmit={(e) => { e.preventDefault(); }} sx={{ mb: 3 }}>
+        <InputBase
+          placeholder="Filter by attribute or word..."
+          value={searchWithin}
+          onChange={(e) => setSearchWithin(e.target.value)}
+          inputProps={{ 'aria-label': 'Filter matches by attribute or keyword' }}
+          sx={{ width: '100%', border: '1px solid #D6E4EE', borderRadius: 1, px: 1.5, py: 0.5, fontSize: '0.8125rem', bgcolor: '#f8fafc' }}
+        />
       </Box>
 
-      {/* 2. Search Within Input */}
-      <Box>
-        <form onSubmit={handleSearchWithinSubmit}>
-          <Paper
-            elevation={0}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1.5,
-              p: '2px 4px',
-              bgcolor: 'background.default'
-            }}
-          >
-            <InputBase
-              sx={{ ml: 1, flex: 1, fontSize: '0.8rem' }}
-              placeholder="Search Within..."
-              value={searchWithin}
-              onChange={(e) => setSearchWithin(e.target.value)}
-            />
-            <IconButton type="submit" sx={{ p: '8px' }} aria-label="search">
-              <SearchIcon fontSize="small" color="primary" />
-            </IconButton>
-          </Paper>
-        </form>
-      </Box>
-
-      {/* 3. Checkboxes */}
-      <FormGroup>
+      {/* 2. Availability & Standards Compliance */}
+      <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1, textTransform: 'uppercase' }}>
+        Stock & Compliance
+      </Typography>
+      <FormGroup sx={{ mb: 3 }}>
         <FormControlLabel
-          control={
-            <Checkbox 
-              size="small" 
-              checked={inStockOnly} 
-              onChange={(e) => setInStockOnly(e.target.checked)} 
-            />
-          }
-          label={<Typography variant="body2" sx={{ fontSize: '0.825rem', fontWeight: 600, color: 'text.secondary' }}>In Stock Only</Typography>}
+          control={<Checkbox checked={inStockOnly} onChange={(e) => { setInStockOnly(e.target.checked); if(e.target.checked) setSearchParams({ ...Object.fromEntries(searchParams), filter: 'in-stock' }); else { const p = { ...Object.fromEntries(searchParams) }; delete p.filter; setSearchParams(p); } }} size="small" color="primary" />}
+          label={<Typography variant="body2" sx={{ fontWeight: 700, color: inStockOnly ? 'primary.main' : 'text.primary' }}>🟢 In Stock Ready-to-Ship</Typography>}
         />
         <FormControlLabel
-          control={
-            <Checkbox 
-              size="small" 
-              checked={rohsCompliant} 
-              onChange={(e) => setRohsCompliant(e.target.checked)} 
-            />
-          }
-          label={<Typography variant="body2" sx={{ fontSize: '0.825rem', fontWeight: 600, color: 'text.secondary' }}>RoHS Compliant</Typography>}
+          control={<Checkbox checked={rohsCompliant} onChange={(e) => setRohsCompliant(e.target.checked)} size="small" color="primary" />}
+          label={<Typography variant="body2" sx={{ fontWeight: 600 }}>RoHS & REACH Compliant</Typography>}
         />
       </FormGroup>
+      <Divider sx={{ mb: 2.5 }} />
 
-      {/* 4. Reset Filters Button */}
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<ReplayIcon />}
-        onClick={handleResetAllFilters}
-        sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 1.5 }}
-      >
-        Reset Filters
-      </Button>
-
-      {/* 5. Categories Navigation */}
-      <Box>
-        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Categories
+      {/* 3. Component Categories */}
+      <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1, textTransform: 'uppercase' }}>
+        Category Classifications
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, mb: 3, maxHeight: 220, overflowY: 'auto' }}>
+        <Typography 
+          variant="body2" 
+          onClick={() => { setSelectedCategory(''); const p = { ...Object.fromEntries(searchParams) }; delete p.category; setSearchParams(p); }}
+          sx={{ cursor: 'pointer', fontWeight: !selectedCategory ? 800 : 500, color: !selectedCategory ? 'primary.main' : 'text.primary', '&:hover': { color: 'primary.main' } }}
+        >
+          • All Electronic Parts ({products.length})
         </Typography>
-        <Divider sx={{ mb: 1.5 }} />
-        
-        <Box sx={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {productIndexData.map((cat) => {
-            const isSelected = selectedCategory && (selectedCategory.toLowerCase() === (cat.slug || '').toLowerCase() || selectedCategory.toLowerCase() === (cat.name || '').toLowerCase());
-            return (
-              <Link
-                key={cat.id || cat.name}
-                onClick={() => {
-                  handleCategorySelect(cat);
-                  if (isMobile) setMobileFilterOpen(false);
-                }}
-                sx={{
-                  fontSize: '0.85rem',
-                  fontWeight: isSelected ? 800 : 600,
-                  color: isSelected ? 'primary.main' : 'text.secondary',
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  py: 0.4,
-                  px: 1,
-                  borderRadius: 1,
-                  bgcolor: isSelected ? 'primary.50' : 'transparent',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  '&:hover': {
-                    color: 'primary.main',
-                    bgcolor: 'action.hover'
-                  }
-                }}
-              >
-                <span>{cat.icon} {cat.name}</span>
-                {cat.productCount > 0 && (
-                  <Chip label={cat.productCount} size="small" sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }} />
-                )}
-              </Link>
-            );
-          })}
-        </Box>
+        {categories.map((cat, idx) => {
+          const cName = cat.name || cat.title || `Series ${idx+1}`;
+          const isSelected = selectedCategory?.toLowerCase() === (cat.slug || cName).toLowerCase();
+          return (
+            <Typography
+              key={idx}
+              variant="body2"
+              onClick={() => { const val = cat.slug || cName; setSelectedCategory(val); setSearchParams({ ...Object.fromEntries(searchParams), category: val }); }}
+              sx={{ cursor: 'pointer', fontWeight: isSelected ? 800 : 500, color: isSelected ? 'primary.main' : 'text.primary', pl: 1, borderLeft: isSelected ? '2px solid #243A5E' : 'none', '&:hover': { color: 'primary.main' } }}
+            >
+              └ {cName}
+            </Typography>
+          );
+        })}
       </Box>
+      <Divider sx={{ mb: 2.5 }} />
+
+      {/* 4. Manufacturers & Brands Index */}
+      {availableBrands.length > 0 && (
+        <>
+          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1, textTransform: 'uppercase' }}>
+            Verified Manufacturers ({availableBrands.length})
+          </Typography>
+          <Box sx={{ maxHeight: 200, overflowY: 'auto', pr: 0.5 }}>
+            <FormGroup>
+              {availableBrands.map((brand, i) => (
+                <FormControlLabel
+                  key={i}
+                  control={<Checkbox size="small" checked={selectedBrands.includes(brand)} onChange={() => handleBrandToggle(brand)} />}
+                  label={<Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>{brand}</Typography>}
+                />
+              ))}
+            </FormGroup>
+          </Box>
+        </>
+      )}
     </Box>
   );
 
   return (
-    <Box>
-      {/* Breadcrumbs */}
-      <Breadcrumbs sx={{ mb: 3 }}>
-        <Link component={RouterLink} to="/" underline="hover" color="inherit">Home</Link>
-        <Typography color="text.primary">Products</Typography>
-      </Breadcrumbs>
-
-      {/* Page Title */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, gap: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', fontFamily: '"Outfit", sans-serif', letterSpacing: -0.5 }}>
-          {isGridView ? "Product Catalog" : "Category Index"}
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {/* View Toggle */}
-          <Box sx={{ display: 'flex', gap: 0.5, bgcolor: 'action.hover', p: 0.5, borderRadius: 2 }}>
-            <Button
-              size="small"
-              variant={isGridView ? 'contained' : 'text'}
-              onClick={() => setViewMode('grid')}
-              sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none', px: 2 }}
-            >
-              All Products
-            </Button>
-            <Button
-              size="small"
-              variant={!isGridView ? 'contained' : 'text'}
-              onClick={() => { setViewMode('grouped'); handleResetAllFilters(); }}
-              sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none', px: 2 }}
-            >
-              Category Index
-            </Button>
-          </Box>
-
-          {/* Mobile Filter Trigger */}
-          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-            <Button 
-              variant="outlined" 
-              onClick={() => setMobileFilterOpen(true)}
-              startIcon={<FilterListIcon />}
-              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
-            >
-              Filters
-            </Button>
-          </Box>
-        </Box>
+    <Box sx={{ pb: 8 }}>
+      {/* Top Navigation Breadcrumbs */}
+      <Box sx={{ py: 2, borderBottom: '1px solid #D6E4EE', mb: 3 }}>
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
+          <RouterLink to="/" style={{ color: '#5F86A6', textDecoration: 'none', fontWeight: 600, fontSize: '0.8125rem' }}>
+            Procurement Portal
+          </RouterLink>
+          <Typography color="primary" sx={{ fontWeight: 800, fontSize: '0.8125rem' }}>
+            {selectedCategory ? `Series: ${selectedCategory.toUpperCase()}` : searchQuery ? `Search: "${searchQuery}"` : 'Master Component Catalog'}
+          </Typography>
+        </Breadcrumbs>
       </Box>
 
-      {/* Outer Content Layout (Sidebar + Main Panel) */}
-      <Box sx={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-        
-        {/* Left Filters Sidebar Card (Desktop Only) */}
-        <Box sx={{ width: 260, flexShrink: 0, display: { xs: 'none', md: 'block' } }}>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              p: 3, 
-              border: '1px solid', 
-              borderColor: 'divider', 
-              borderRadius: 2,
-              position: 'sticky',
-              top: 100
-            }}
-          >
-            {sidebarFilterContent}
-          </Paper>
+      {/* Header Bar: Results count and View / Sort Controls */}
+      <Paper elevation={0} sx={{ p: 2.5, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderRadius: 1.5, mb: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main' }}>
+            {selectedCategory ? selectedCategory : searchQuery ? `Results for "${searchQuery}"` : 'Industrial Electronic Components'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mt: 0.5 }}>
+            Displaying <strong>{totalResults}</strong> precision matching components verified for OEM dispatch.
+          </Typography>
         </Box>
 
-        {/* Right Main Panel */}
-        <Box sx={{ flexGrow: 1, width: { xs: '100%', md: 'calc(100% - 260px - 32px)' } }}>
+        {/* View mode toggle & sort selector */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           
-          {/* ========================================================================= */}
-          {/* CASE A: Grid View (When filters are applied) */}
-          {/* ========================================================================= */}
-          {isGridView ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
-              {/* Filter details & Sort */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                
-                {/* Active Filter Chips */}
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', mr: 1 }}>
-                    Active Filters:
-                  </Typography>
-                  {selectedCategory && (
-                    <Chip
-                      label={`Category: ${selectedCategory}`}
-                      size="small"
-                      onDelete={() => {
-                        setSelectedCategory('');
-                        const nextParams = {};
-                        if (searchQuery) nextParams.search = searchQuery;
-                        setSearchParams(nextParams);
-                      }}
-                      color="primary"
-                      sx={{ borderRadius: 1.5, fontWeight: 600 }}
-                    />
-                  )}
-                  {searchQuery && (
-                    <Chip
-                      label={`Search: "${searchQuery}"`}
-                      size="small"
-                      onDelete={() => {
-                        setSearchQuery('');
-                        const nextParams = {};
-                        if (selectedCategory) nextParams.category = selectedCategory;
-                        setSearchParams(nextParams);
-                      }}
-                      color="primary"
-                      sx={{ borderRadius: 1.5, fontWeight: 600 }}
-                    />
-                  )}
-                  <Button 
-                    size="small" 
-                    onClick={handleResetAllFilters} 
-                    sx={{ textTransform: 'none', fontWeight: 750, color: 'error.main' }}
-                  >
-                    Clear All
-                  </Button>
-                </Box>
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <Button variant="outlined" startIcon={<FilterListIcon />} onClick={() => setMobileFilterOpen(true)} size="small">
+              FILTERS ({selectedBrands.length + (inStockOnly ? 1 : 0) + (selectedCategory ? 1 : 0)})
+            </Button>
+          </Box>
 
-                {/* Sort selector */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                    Sort By:
-                  </Typography>
-                  <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <Select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      sx={{ borderRadius: 1.5, fontSize: '0.8rem', fontWeight: 600 }}
-                    >
-                      <MenuItem value="featured">Featured</MenuItem>
-                      <MenuItem value="price-asc">Price: Low to High</MenuItem>
-                      <MenuItem value="price-desc">Price: High to Low</MenuItem>
-                      <MenuItem value="stock">In Stock</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-              </Box>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="sort-select-label" sx={{ fontSize: '0.8125rem', fontWeight: 700 }}>SORT ORDER</InputLabel>
+            <Select labelId="sort-select-label" value={sortBy} label="SORT ORDER" onChange={(e) => setSortBy(e.target.value)} sx={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+              <MenuItem value="featured">Featured / Relevancy</MenuItem>
+              <MenuItem value="priceAsc">Unit Price: Low to High</MenuItem>
+              <MenuItem value="priceDesc">Unit Price: High to Low</MenuItem>
+              <MenuItem value="stockDesc">Availability: High Stock First</MenuItem>
+            </Select>
+          </FormControl>
 
-              {/* Grid Content */}
-              {loading ? (
-                <Box sx={{ py: 3 }}>
-                  <SkeletonLoader type="card" count={8} />
+          <FormControl size="small" sx={{ width: 100, display: { xs: 'none', sm: 'inline-flex' } }}>
+            <InputLabel id="limit-select-label" sx={{ fontSize: '0.8125rem', fontWeight: 700 }}>PER PAGE</InputLabel>
+            <Select labelId="limit-select-label" value={pageSize} label="PER PAGE" onChange={(e) => setPageSize(e.target.value)} sx={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+              <MenuItem value="25">25</MenuItem>
+              <MenuItem value="50">50</MenuItem>
+              <MenuItem value="100">100</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Paper>
+
+      {/* Sticky Applied Filter Chips Bar */}
+      {hasActiveFilters && (
+        <Box sx={{ p: 1.5, mb: 3, bgcolor: '#EDF4FA', borderRadius: 1, border: '1px dashed #A0B4C8', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', mr: 1 }}>APPLIED CRITERIA:</Typography>
+          {selectedCategory && (
+            <Chip label={`Series: ${selectedCategory}`} size="small" onDelete={() => { setSelectedCategory(''); const p = { ...Object.fromEntries(searchParams) }; delete p.category; setSearchParams(p); }} sx={{ bgcolor: '#ffffff', fontWeight: 700 }} />
+          )}
+          {searchQuery && (
+            <Chip label={`Keyword: "${searchQuery}"`} size="small" onDelete={() => { setSearchQuery(''); const p = { ...Object.fromEntries(searchParams) }; delete p.search; setSearchParams(p); }} sx={{ bgcolor: '#ffffff', fontWeight: 700 }} />
+          )}
+          {searchWithin && (
+            <Chip label={`Within: "${searchWithin}"`} size="small" onDelete={() => setSearchWithin('')} sx={{ bgcolor: '#ffffff', fontWeight: 700 }} />
+          )}
+          {inStockOnly && (
+            <Chip label="🟢 Ready to Ship (In Stock)" size="small" onDelete={() => { setInStockOnly(false); const p = { ...Object.fromEntries(searchParams) }; delete p.filter; setSearchParams(p); }} sx={{ bgcolor: '#ffffff', fontWeight: 700 }} />
+          )}
+          {selectedBrands.map(b => (
+            <Chip key={b} label={`MFR: ${b}`} size="small" onDelete={() => handleBrandToggle(b)} sx={{ bgcolor: '#ffffff', fontWeight: 700 }} />
+          ))}
+          <Button size="small" onClick={handleResetFilters} sx={{ ml: 'auto', fontSize: '0.7rem', fontWeight: 800, color: 'error.main' }}>
+            CLEAR ALL FILTERS
+          </Button>
+        </Box>
+      )}
+
+      {/* Main Layout Columns */}
+      <Grid container spacing={4}>
+        
+        {/* Left Parametric Column (Desktop) */}
+        <Grid size={{ xs: 12, md: 3.2 }} sx={{ display: { xs: 'none', md: 'block' } }}>
+          <Box sx={{ position: 'sticky', top: 120 }}>
+            {filterPanel}
+          </Box>
+        </Grid>
+
+        {/* Right Catalog Results Column */}
+        <Grid size={{ xs: 12, md: 8.8 }}>
+          {loading ? (
+            <SkeletonLoader count={8} />
+          ) : error ? (
+            <EmptyState
+              title="Database Server Unreachable"
+              description={error}
+              actionText="Retry Synchronization"
+              onAction={() => window.location.reload()}
+            />
+          ) : totalResults > 0 ? (
+            <Box>
+              {/* High-Density Industrial Table / List View */}
+              <Paper elevation={0} sx={{ border: '1px solid #D6E4EE', borderRadius: 1, overflow: 'hidden' }}>
+                {/* Table Header Row */}
+                <Box sx={{ display: { xs: 'none', md: 'grid' }, gridTemplateColumns: '120px 2.5fr 1.5fr 1.5fr 1.8fr 180px', gap: 2, px: 2, py: 1.2, bgcolor: '#EDF4FA', borderBottom: '2px solid #243A5E', fontWeight: 800, fontSize: '0.75rem', color: 'primary.main', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <Box>Part Image</Box>
+                  <Box>Part Number / Description</Box>
+                  <Box>Stock Availability</Box>
+                  <Box>Unit / Tier Price</Box>
+                  <Box>Compliance & Series</Box>
+                  <Box sx={{ textAlign: 'right' }}>Procurement Action</Box>
                 </Box>
-              ) : error ? (
-                <Box sx={{ textAlign: 'center', py: 10 }}>
-                  <Typography variant="h6" color="error">{error}</Typography>
-                </Box>
-              ) : sortedProducts.length > 0 ? (
-                <Box sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, 
-                  gap: 3 
-                }}>
-                  {sortedProducts.map((product) => (
-                    <RouterLink to={`/product/${product.slug || product.id}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }} key={product.id || product.slug}>
-                      <ProductCard product={product} sx={{ height: '100%' }} />
-                    </RouterLink>
-                  ))}
-                </Box>
-              ) : (
-                <EmptyState
-                  title="No Products Matching Filters"
-                  description="We couldn't locate items corresponding to your active search keywords or filter criteria."
-                  icon="search"
-                  actionText="Reset All Filters"
-                  onAction={handleResetAllFilters}
-                />
-              )}
+                {filteredAndSortedProducts.map((product, idx) => (
+                  <ProductCard key={product.id || product._id || idx} product={product} viewMode="list" />
+                ))}
+              </Paper>
             </Box>
           ) : (
-            
-            // =========================================================================
-            // CASE B: Index View (Default grouped view)
-            // =========================================================================
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {productIndexData.map((cat) => (
-                <Box 
-                  key={cat.id || cat.name}  
-                  id={`category-section-${cat.name}`} 
-                  sx={{ 
-                    border: '1px solid', 
-                    borderColor: 'divider', 
-                    borderRadius: 3, 
-                    overflow: 'hidden',
-                    scrollMarginTop: 120,
-                    bgcolor: 'background.paper',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-                    transition: 'all 0.2s',
-                    '&:hover': { boxShadow: '0 8px 25px rgba(0,0,0,0.06)' }
-                  }}
-                >
-                  {/* Category Header Bar */}
-                  <Box 
-                    sx={{ 
-                      bgcolor: 'primary.main', 
-                      color: 'white', 
-                      px: 3.5, 
-                      py: 2.5, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Typography sx={{ fontSize: '1.6rem' }}>{cat.icon}</Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.5, fontFamily: '"Outfit", sans-serif' }}>
-                        {cat.name}
-                      </Typography>
-                    </Box>
-                    <Chip 
-                      label={`${cat.productCount || 0} Products`} 
-                      sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 700, px: 1.5 }} 
-                    />
-                  </Box>
-                  
-                  {/* Category Content */}
-                  <Box sx={{ p: 3.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 600, fontSize: '0.95rem', fontWeight: 500 }}>
-                      Browse our high-quality inventory of {cat.name}. Check real-time stock levels, volume price breaks, and request immediate quotes or delivery.
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      size="medium"
-                      onClick={() => handleCategorySelect(cat)}
-                      sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, textTransform: 'none', boxShadow: '0 4px 12px rgba(25, 118, 210, 0.2)' }}
-                    >
-                      Explore {cat.name} ➔
-                    </Button>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
+            <EmptyState
+              title="No Matching Industrial Components"
+              description="Your current parametric combinations did not return any corresponding part numbers in our live warehouse database."
+              actionText="Clear Parametric Filters"
+              onAction={handleResetFilters}
+            />
           )}
-        </Box>
-      </Box>
+        </Grid>
+      </Grid>
 
-      {/* Mobile Drawer filters */}
-      <Drawer
-        anchor="right"
-        open={mobileFilterOpen}
-        onClose={() => setMobileFilterOpen(false)}
-      >
-        <Box sx={{ width: 280, p: 3 }}>
-          {sidebarFilterContent}
+      {/* Mobile Sidebar Drawer */}
+      <Drawer anchor="left" open={mobileFilterOpen} onClose={() => setMobileFilterOpen(false)} PaperProps={{ sx: { width: 300, p: 1 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+          <Button size="small" onClick={() => setMobileFilterOpen(false)} sx={{ fontWeight: 800 }}>CLOSE PANELS ✕</Button>
         </Box>
+        {filterPanel}
       </Drawer>
     </Box>
   );

@@ -19,13 +19,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 
-const initialLogs = [
-  { id: 1, admin: 'Jaimeen Vasa', role: 'SUPER_ADMIN', action: 'Login', details: 'Successful login from Chrome/Windows', ip: '192.168.1.1', timestamp: '2026-05-09 23:15:21' },
-  { id: 2, admin: 'Rahul Sharma', role: 'PRODUCT_MANAGER', action: 'Update Product', details: 'Updated stock for "Industrial Motor X1"', ip: '192.168.1.45', timestamp: '2026-05-09 22:45:10' },
-  { id: 3, admin: 'Sneha Patel', role: 'SUPPORT_STAFF', action: 'Update Order', details: 'Changed Order #ORD-8821 status to "Shipped"', ip: '192.168.1.12', timestamp: '2026-05-09 21:30:05' },
-  { id: 4, admin: 'Jaimeen Vasa', role: 'SUPER_ADMIN', action: 'Logout', details: 'User logged out', ip: '192.168.1.1', timestamp: '2026-05-09 21:00:00' },
-  { id: 5, admin: 'Amit Gupta', role: 'ORDER_MANAGER', action: 'Login', details: 'Successful login from Firefox/macOS', ip: '10.0.0.5', timestamp: '2026-05-09 19:15:33' },
-];
+const initialLogs = [];
 
 const ActivityLogs = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,7 +79,14 @@ const ActivityLogs = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredLogs.map((log) => (
+            {filteredLogs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 6, color: 'text.secondary', fontWeight: 500 }}>
+                  No administrative system logs recorded.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredLogs.map((log) => (
               <TableRow key={log.id} hover>
                 <TableCell sx={{ fontWeight: 500, color: 'text.secondary' }}>{log.timestamp}</TableCell>
                 <TableCell>
@@ -105,7 +106,7 @@ const ActivityLogs = () => {
                 <TableCell sx={{ maxWidth: 300 }}>{log.details}</TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{log.ip}</TableCell>
               </TableRow>
-            ))}
+            )))}
           </TableBody>
         </Table>
       </TableContainer>

@@ -29,9 +29,9 @@ const DashboardProductDetails = () => {
   const [fileAttributes, setFileAttributes] = useState([]);
   const [loading, setLoading] = useState(true);
   const { uploadFile, isUploading } = useS3Upload();
-  const [currency, setCurrency] = useState('USD');
-  const [currencies, setCurrencies] = useState([{ code: 'USD', displayName: '$ US Dollar' }]);
-  const [packagingTypes, setPackagingTypes] = useState([{ code: 'CUT_TAPE', displayName: 'Cut Tape' }]);
+  const [currency, setCurrency] = useState('INR');
+  const [currencies, setCurrencies] = useState([]);
+  const [packagingTypes, setPackagingTypes] = useState([]);
   const [exchangeRates, setExchangeRates] = useState(null);
 
   useEffect(() => {
@@ -70,9 +70,17 @@ const DashboardProductDetails = () => {
           configAdminService.getPackagingTypes(),
           categoryAdminService.listCategories({ page: 0, size: 100 })
         ]);
-        setCurrencies(currRes.data || currRes);
-        setPackagingTypes(pkgRes.data || pkgRes);
+        const loadedCurrencies = currRes.data || currRes || [];
+        const loadedPackaging = pkgRes.data || pkgRes || [];
+        setCurrencies(loadedCurrencies);
+        setPackagingTypes(loadedPackaging);
         setCategories(catRes.data?.content || catRes.content || []);
+        if (Array.isArray(loadedCurrencies) && loadedCurrencies.length > 0) {
+          setCurrency(prev => (prev && loadedCurrencies.some(c => c.code === prev)) ? prev : loadedCurrencies[0].code);
+        }
+        if (Array.isArray(loadedPackaging) && loadedPackaging.length > 0) {
+          setPkgForm(prev => ({ ...prev, type: prev.type || loadedPackaging[0].code }));
+        }
       } catch (err) {
         console.error('Failed to load catalog config', err);
       }
@@ -125,8 +133,8 @@ const DashboardProductDetails = () => {
   const [selectedPkgId, setSelectedPkgId] = useState(null);
   const [selectedPriceId, setSelectedPriceId] = useState(null);
 
-  const [pkgForm, setPkgForm] = useState({ type: 'CUT_TAPE', moq: 1, inventory: 0, leadTime: '', status: 'Active' });
-  const [priceForm, setPriceForm] = useState({ qtyLimit: 1, price: 0, currency: 'USD' });
+  const [pkgForm, setPkgForm] = useState({ type: '', moq: 1, inventory: 0, leadTime: '', status: 'Active' });
+  const [priceForm, setPriceForm] = useState({ qtyLimit: 1, price: 0, currency: 'INR' });
   const [docForm, setDocForm] = useState({ name: '', attributeId: '', file: null });
   const [newAttrName, setNewAttrName] = useState('');
 
@@ -388,11 +396,11 @@ const DashboardProductDetails = () => {
     }
   };
 
-  const convertPrice = (priceMinor, baseCurrency = 'USD') => {
+  const convertPrice = (priceMinor, baseCurrency = 'INR') => {
     const amount = priceMinor / 100;
-    const targetCurrency = currency || 'USD';
-    const validBase = (baseCurrency && typeof baseCurrency === 'string' && baseCurrency.trim().length === 3) ? baseCurrency.trim().toUpperCase() : 'USD';
-    const validTarget = (targetCurrency && typeof targetCurrency === 'string' && targetCurrency.trim().length === 3) ? targetCurrency.trim().toUpperCase() : 'USD';
+    const targetCurrency = currency || 'INR';
+    const validBase = (baseCurrency && typeof baseCurrency === 'string' && baseCurrency.trim().length === 3) ? baseCurrency.trim().toUpperCase() : 'INR';
+    const validTarget = (targetCurrency && typeof targetCurrency === 'string' && targetCurrency.trim().length === 3) ? targetCurrency.trim().toUpperCase() : 'INR';
 
     // Fallback if rates aren't loaded or it's the exact same currency
     if (!exchangeRates || validBase === validTarget) {
@@ -614,7 +622,7 @@ const DashboardProductDetails = () => {
                 <Typography variant="subtitle1" fontWeight={600}>Packaging: {pkg.displayName || pkg.packagingType}</Typography>
                 <Button size="small" startIcon={<AddIcon />} onClick={() => {
                   setSelectedPkgId(pkg.id);
-                  setPriceForm({ qtyLimit: 1, price: 0, currency: 'USD' });
+                  setPriceForm({ qtyLimit: 1, price: 0, currency: currencies[0]?.code || 'INR' });
                   setOpenPriceModal(true);
                 }}>Add Price Break</Button>
               </Box>
@@ -635,7 +643,7 @@ const DashboardProductDetails = () => {
                         <IconButton size="small" color="secondary" onClick={() => {
                           setSelectedPkgId(pkg.id);
                           setSelectedPriceId(price.id);
-                          setPriceForm({ qtyLimit: price.minQuantity, price: (price.unitPriceMinor / 100).toFixed(2), currency: price.currency || 'USD' });
+                          setPriceForm({ qtyLimit: price.minQuantity, price: (price.unitPriceMinor / 100).toFixed(2), currency: price.currency || currencies[0]?.code || 'INR' });
                           setOpenEditPriceModal(true);
                         }}>
                           <EditIcon fontSize="small" />

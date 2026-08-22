@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Filter, ChevronDown, Check, X, ArrowUpDown, Info, ShoppingCart, SlidersHorizontal } from 'lucide-react';
 
 import { productPublicService, productService } from '../../services/apiServices';
@@ -19,11 +19,19 @@ const ParametricSearch = () => {
         
         // Fetch actual filters
         try {
-          const [catRes, brandRes] = await Promise.all([
+          // TODO(backend-missing): No backend endpoint for GET /brands.
+          // Feature: Parametric search "Manufacturer" filter options.
+          // Commented out until backend implements this.
+          // Suggested endpoint: GET /api/brands
+          // const [catRes, brandRes] = await Promise.all([
+          //   productService.getCategories(),
+          //   productService.getBrands()
+          // ]);
+          const [catRes] = await Promise.all([
             productService.getCategories(),
-            productService.getBrands()
           ]);
-          
+          const brandRes = { data: [] }; // Stub: backend has no /brands endpoint yet.
+
           setFilters([
             { id: 'category', name: 'Category', options: (catRes?.data || catRes || []).map(c => c.name || c) },
             { id: 'brand', name: 'Manufacturer', options: (brandRes?.data || brandRes || []).map(b => b.name || b) },

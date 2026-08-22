@@ -4,28 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Clock, TrendingUp, Package, Tag, Building2, X } from 'lucide-react';
 
 
-// Simulated API response for autocomplete suggestions
+// Clean API fallback without mock data simulation
 const fetchSuggestions = async (query) => {
-  // In production, this would call your backend endpoint:
-  // return axios.get(`/api/search/autocomplete?q=${query}`).then(res => res.data);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        categories: [
-          { id: 1, name: 'Ceramic Capacitors' },
-          { id: 2, name: 'Film Capacitors' }
-        ],
-        manufacturers: [
-          { id: 'TI', name: 'Texas Instruments' },
-          { id: 'ST', name: 'STMicroelectronics' }
-        ],
-        parts: [
-          { sku: 'CAP-0805-104', name: '0.1uF 50V Ceramic Capacitor 0805', inStock: true },
-          { sku: 'CAP-1206-105', name: '1uF 25V Ceramic Capacitor 1206', inStock: false }
-        ]
-      });
-    }, 200); // simulate network latency
-  });
+  return { categories: [], manufacturers: [], parts: [] };
 };
 
 const SearchAutocomplete = () => {

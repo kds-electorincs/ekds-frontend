@@ -2,31 +2,10 @@ import React, { useState } from 'react';
 import { Box, Typography, Button, Paper, Radio, RadioGroup, FormControlLabel } from '@mui/material';
 import { Add, Home, Business } from '@mui/icons-material';
 
-const dummyAddresses = [
-  {
-    id: 1,
-    type: 'Home',
-    name: 'John Doe',
-    address: '123 Main Street, Apt 4B',
-    city: 'New York',
-    state: 'NY',
-    zip: '10001',
-    country: 'USA'
-  },
-  {
-    id: 2,
-    type: 'Office',
-    name: 'John Doe',
-    address: '456 Market St, Suite 100',
-    city: 'San Francisco',
-    state: 'CA',
-    zip: '94105',
-    country: 'USA'
-  }
-];
+const dummyAddresses = [];
 
 const AddressManager = ({ onSelectAddress }) => {
-  const [selected, setSelected] = useState(dummyAddresses[0].id);
+  const [selected, setSelected] = useState(dummyAddresses[0]?.id || null);
 
   const handleChange = (event) => {
     const val = Number(event.target.value);

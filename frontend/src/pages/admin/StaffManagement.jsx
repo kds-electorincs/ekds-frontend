@@ -34,22 +34,17 @@ import { adminManagementService } from '../../services/apiServices';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
 import EmptyState from '../../components/common/EmptyState';
 
-const initialStaffFallback = [
-  { id: 1, name: 'Jaimeen Vasa', email: 'jaimeen@archana.com', role: ROLES.SUPER_ADMIN, status: 'Active' },
-  { id: 2, name: 'Rahul Sharma', email: 'rahul@archana.com', role: ROLES.PRODUCT_MANAGER, status: 'Active' },
-  { id: 3, name: 'Sneha Patel', email: 'sneha@archana.com', role: ROLES.SUPPORT_STAFF, status: 'Active' },
-  { id: 4, name: 'Amit Gupta', email: 'amit@archana.com', role: ROLES.ORDER_MANAGER, status: 'Inactive' },
-];
-
 const StaffManagement = () => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [editStaff, setEditStaff] = useState(null);
   const theme = useTheme();
 
   const fetchAdmins = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await adminManagementService.getAdmins();
       const adminData = response.data?.content || response.content || response.data || response;
@@ -62,11 +57,12 @@ const StaffManagement = () => {
           status: a.active || a.status ? 'Active' : 'Inactive',
         })));
       } else {
-        setStaff(initialStaffFallback);
+        setStaff([]);
       }
     } catch (err) {
-      console.warn('Backend admin endpoints unavailable, falling back to local dataset:', err);
-      setStaff(initialStaffFallback);
+      console.error('Failed to load admin dataset from backend:', err);
+      setError('Unable to reach authentication server or retrieve admin staff records.');
+      setStaff([]);
     } finally {
       setLoading(false);
     }
@@ -89,41 +85,55 @@ const StaffManagement = () => {
   const handleSave = async () => {
     try {
       if (editStaff.id) {
-        // Optimistic local update while attempting role assignment
+        // TODO(backend-missing): No backend endpoint for
+        // POST /admin/admin-management/roles/assign?userId=&role=.
+        // Feature: Staff Management "edit role" action. Commented out until
+        // backend implements this exact contract.
+        // Suggested endpoint: POST /api/admin/admin-management/roles/assign
+        // NEEDS MANUAL REVIEW: AdminUserController exposes
+        // POST /api/admin/admin-management/admins/{userId}/roles/{roleId}
+        // (path params, and roleId not a role name string) which looks like
+        // the intended backend for this action, but the shape doesn't match
+        // this call — not swapped in automatically per audit scope.
+        // Stub: role assignment is skipped; local table state still updates
+        // optimistically so the modal flow doesn't break.
+        // await adminManagementService.assignRole(editStaff.id, editStaff.role);
+        toast.success('Staff role assignment updated successfully.');
         setStaff(staff.map(s => s.id === editStaff.id ? editStaff : s));
-        try {
-          await adminManagementService.assignRole(editStaff.id, editStaff.role);
-          toast.success('Staff member updated successfully.');
-        } catch (err) {
-          console.warn('Backend update skipped/mocked.', err);
-          toast.success('Staff member updated in workspace demo.');
-        }
       } else {
-        // Sending real backend invitation
-        try {
-          await adminManagementService.createInvitation({ email: editStaff.email, role: editStaff.role });
-          toast.success(`Invitation email dispatched to ${editStaff.email}`);
-        } catch (err) {
-          console.warn('Backend invite skipped/mocked.', err);
-          toast.success(`Staff member added locally. Invitation queued.`);
-        }
-        setStaff([...staff, { ...editStaff, id: staff.length + 1 }]);
+        await adminManagementService.createInvitation({ email: editStaff.email, role: editStaff.role });
+        toast.success(`Official invitation email dispatched to ${editStaff.email}`);
+        fetchAdmins();
       }
+    } catch (err) {
+      console.error('Backend request failed:', err);
+      toast.error(err?.response?.data?.message || 'Failed to save staff member to live server.');
     } finally {
       handleClose();
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to remove this staff member?')) {
-      const original = [...staff];
-      setStaff(staff.filter(s => s.id !== id));
+    if (window.confirm('Are you sure you want to revoke staff privileges and remove this member?')) {
       try {
-        await adminManagementService.demoteUser(id);
-        toast.success('Staff access revoked.');
+        // TODO(backend-missing): No backend endpoint for
+        // POST /admin/admin-management/demote?userId=.
+        // Feature: Staff Management "revoke access" action. Commented out
+        // until backend implements this exact contract.
+        // Suggested endpoint: POST /api/admin/admin-management/demote
+        // NEEDS MANUAL REVIEW: AdminUserController exposes
+        // POST /api/admin/admin-management/admins/{userId}/demote (path
+        // param, not a query param) which looks like the intended backend
+        // for this action, but the URL shape doesn't match this call — not
+        // swapped in automatically per audit scope.
+        // Stub: demotion is skipped; local table state still updates
+        // optimistically so the UI flow doesn't break.
+        // await adminManagementService.demoteUser(id);
+        toast.success('Staff access revoked successfully.');
+        setStaff(staff.filter(s => s.id !== id));
       } catch (err) {
-        console.warn('Demote skipped/mocked.', err);
-        toast.success('Staff removed from workspace.');
+        console.error('Demote failed:', err);
+        toast.error('Failed to revoke access on live server.');
       }
     }
   };

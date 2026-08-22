@@ -6,31 +6,10 @@ import {
 } from 'recharts';
 import { Download as DownloadIcon } from '@mui/icons-material';
 
-const monthlyData = [
-  { name: 'Jan', sales: 4000, visitors: 2400, orders: 150 },
-  { name: 'Feb', sales: 3000, visitors: 1398, orders: 120 },
-  { name: 'Mar', sales: 2000, visitors: 9800, orders: 300 },
-  { name: 'Apr', sales: 2780, visitors: 3908, orders: 200 },
-  { name: 'May', sales: 1890, visitors: 4800, orders: 180 },
-  { name: 'Jun', sales: 2390, visitors: 3800, orders: 190 },
-  { name: 'Jul', sales: 3490, visitors: 4300, orders: 250 },
-];
-
-const trafficSources = [
-  { name: 'Organic', value: 45 },
-  { name: 'Direct', value: 25 },
-  { name: 'Social', value: 20 },
-  { name: 'Referral', value: 10 },
-];
-
+const monthlyData = [];
+const trafficSources = [];
 const COLORS = ['#243A5E', '#5F86A6', '#8FB6D8', '#CFE3F1'];
-  
-const topSellingProducts = [
-  { name: 'Wireless Headphones', category: 'Electronics', sales: 1240, revenue: '$148,800' },
-  { name: 'Ergonomic Office Chair', category: 'Furniture', sales: 850, revenue: '$296,650' },
-  { name: 'Minimalist Leather Watch', category: 'Accessories', sales: 620, revenue: '$80,290' },
-  { name: 'Smart Home Hub', category: 'Electronics', sales: 540, revenue: '$80,460' },
-];
+const topSellingProducts = [];
 
 const DashboardAnalytics = () => {
   const theme = useTheme();
@@ -196,14 +175,21 @@ const DashboardAnalytics = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {topSellingProducts.map((product, idx) => (
+                  {topSellingProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '32px 0', textAlign: 'center', color: theme.palette.text.secondary }}>
+                        No sales data recorded in the current billing cycle.
+                      </td>
+                    </tr>
+                  ) : (
+                    topSellingProducts.map((product, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ padding: '16px 0', fontWeight: 600 }}>{product.name}</td>
                       <td style={{ padding: '16px 0', color: theme.palette.text.secondary }}>{product.category}</td>
                       <td style={{ padding: '16px 0' }}>{product.sales}</td>
                       <td style={{ padding: '16px 0', fontWeight: 600, color: theme.palette.primary.main }}>{product.revenue}</td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </Box>

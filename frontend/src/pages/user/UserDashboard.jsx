@@ -51,7 +51,7 @@ const UserDashboard = () => {
       {/* 2. Top Action Cards Grid (3 Columns) */}
       <Grid container spacing={3}>
         {/* Card 1: myLists */}
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper 
             elevation={0}
             sx={{ 
@@ -99,7 +99,7 @@ const UserDashboard = () => {
         </Grid>
 
         {/* Card 2: BOM Upload */}
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper 
             elevation={0}
             sx={{ 
@@ -147,7 +147,7 @@ const UserDashboard = () => {
         </Grid>
 
         {/* Card 3: Reference Library */}
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper 
             elevation={0}
             sx={{ 

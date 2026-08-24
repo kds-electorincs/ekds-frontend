@@ -13,7 +13,7 @@ const SkeletonLoader = ({ type = 'card', count = 4, columns = 5 }) => {
     return (
       <Grid container spacing={3}>
         {items.map((_, index) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={index}>
             <Card sx={{ 
               borderRadius: 3, 
               boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
@@ -74,7 +74,7 @@ const SkeletonLoader = ({ type = 'card', count = 4, columns = 5 }) => {
     return (
       <Grid container spacing={3}>
         {items.map((_, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
             <Paper sx={{ p: 3, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
               <Skeleton variant="rounded" width={60} height={60} sx={{ borderRadius: 3 }} animation="wave" />
               <Box sx={{ flex: 1 }}>
@@ -91,7 +91,7 @@ const SkeletonLoader = ({ type = 'card', count = 4, columns = 5 }) => {
   if (type === 'detail') {
     return (
       <Grid container spacing={5} sx={{ py: 3 }}>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Skeleton variant="rounded" width="100%" height={450} sx={{ borderRadius: 4, mb: 2 }} animation="wave" />
           <Stack direction="row" spacing={2}>
             {[1, 2, 3, 4].map((idx) => (
@@ -99,7 +99,7 @@ const SkeletonLoader = ({ type = 'card', count = 4, columns = 5 }) => {
             ))}
           </Stack>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Skeleton variant="text" width="30%" height={20} sx={{ mb: 1 }} animation="wave" />
           <Skeleton variant="text" width="80%" height={48} sx={{ mb: 2 }} animation="wave" />
           <Skeleton variant="text" width="40%" height={36} sx={{ mb: 4 }} animation="wave" />
@@ -112,7 +112,7 @@ const SkeletonLoader = ({ type = 'card', count = 4, columns = 5 }) => {
             <Skeleton variant="text" width="40%" height={24} sx={{ mb: 2 }} animation="wave" />
             <Grid container spacing={2}>
               {[1, 2, 3].map((idx) => (
-                <Grid item xs={4} key={idx}>
+                <Grid size={{ xs: 4 }} key={idx}>
                   <Skeleton variant="rounded" width="100%" height={70} sx={{ borderRadius: 2 }} animation="wave" />
                 </Grid>
               ))}

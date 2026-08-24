@@ -356,7 +356,7 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
         
         <DialogContent sx={{ p: 4 }}>
           <Grid container spacing={4} sx={{ mt: 0 }}>
-            <Grid item xs={12} md={5}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <Box sx={{ width: '100%', height: 260, bgcolor: '#f8fafc', border: '1px solid #D6E4EE', borderRadius: 1, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Box component="img" src={image} alt={name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </Box>
@@ -365,7 +365,7 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
               </Box>
             </Grid>
 
-            <Grid item xs={12} md={7}>
+            <Grid size={{ xs: 12, md: 7 }}>
               <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.dark', textTransform: 'uppercase' }}>
                 MFR: {typeof manufacturer === 'string' ? manufacturer : 'Industrial Partner'} | Category: {categoryLabel}
               </Typography>

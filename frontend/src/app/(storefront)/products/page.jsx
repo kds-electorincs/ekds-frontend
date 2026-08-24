@@ -483,7 +483,7 @@ const ProductListing = () => {
                   <Box sx={{ p: 3 }}>
                     <Grid container spacing={4}>
                       {cat.subcategories.map((sub) => (
-                        <Grid item xs={12} sm={6} md={4} key={sub.name}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={sub.name}>
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                             {/* Subcategory Header */}
                             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main' }}>

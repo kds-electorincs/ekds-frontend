@@ -117,7 +117,7 @@ const Home = () => {
 
   return (
     <Box sx={{ width: '100%', pb: 8 }}>
-      
+
       {/* 1. DIGIKEY-INSPIRED HERO PROCUREMENT COMMAND BLOCK */}
       <Paper 
         elevation={0}
@@ -178,19 +178,19 @@ const Home = () => {
 
           {/* System Certifications Indicators */}
           <Grid container spacing={2}>
-            <Grid item xs={6} sm={4}>
+            <Grid size={{ xs: 6, sm: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ShieldIcon sx={{ color: 'secondary.main', fontSize: 22 }} />
                 <Typography variant="caption" sx={{ color: 'white', fontWeight: 700 }}>100% FACTORY TESTED & VERIFIED</Typography>
               </Box>
             </Grid>
-            <Grid item xs={6} sm={4}>
+            <Grid size={{ xs: 6, sm: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <BoltIcon sx={{ color: '#00e676', fontSize: 22 }} />
                 <Typography variant="caption" sx={{ color: 'white', fontWeight: 700 }}>SAME-DAY DISPATCH AVAILABLE</Typography>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <FactoryIcon sx={{ color: 'secondary.main', fontSize: 22 }} />
                 <Typography variant="caption" sx={{ color: 'white', fontWeight: 700 }}>CUSTOM B2B VOLUME DISCOUNTS</Typography>
@@ -226,7 +226,7 @@ const Home = () => {
               const catSlug = cat.slug || catName.toLowerCase().replace(/\s+/g, '-');
               const itemCount = cat.productCount || cat.itemsCount || 0;
               return (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={cat.id || index}>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={cat.id || index}>
                   <Card 
                     component={RouterLink} 
                     to={`/products?category=${encodeURIComponent(catSlug)}`}
@@ -286,7 +286,7 @@ const Home = () => {
 
       {/* 3. LIVE B2B PROCUREMENT TOOLBOX & BOM PROMO STRIP */}
       <Grid container spacing={3} sx={{ mb: 6 }}>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 4, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderLeft: '6px solid #243A5E', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
@@ -302,7 +302,7 @@ const Home = () => {
             </Button>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 4, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderLeft: '6px solid #8FB6D8', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
@@ -339,7 +339,7 @@ const Home = () => {
         {featuredProducts.length > 0 ? (
           <Grid container spacing={2.5}>
             {featuredProducts.slice(0, 8).map((product, index) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={product.id || product._id || index}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id || product._id || index}>
                 <ProductCard product={product} viewMode="grid" />
               </Grid>
             ))}

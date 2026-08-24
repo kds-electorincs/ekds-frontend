@@ -256,29 +256,31 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
           </DialogTitle>
           <DialogContent dividers>
             <Grid container spacing={2} sx={{ pt: 1 }}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="Label (e.g., Home, Office)" name="label" value={formData.label} onChange={handleFormChange} required />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="Phone Number" name="phone" value={formData.phone} onChange={handleFormChange} required />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField fullWidth size="small" label="Address Line 1" name="line1" value={formData.line1} onChange={handleFormChange} required placeholder="Building, Street, Area" />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField fullWidth size="small" label="Address Line 2 (Optional)" name="line2" value={formData.line2} onChange={handleFormChange} placeholder="Landmark, Suite" />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="City" name="city" value={formData.city} onChange={handleFormChange} required />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="State / Province" name="state" value={formData.state} onChange={handleFormChange} required />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="Pincode / Zip" name="pincode" value={formData.pincode} onChange={handleFormChange} required />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField fullWidth size="small" label="Country (2-char ISO)" name="country" value={formData.country} onChange={handleFormChange} inputProps={{ maxLength: 2 }} required helperText="e.g. IN, US, UK" />
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField fullWidth size="small" label="Country (2-char ISO)" name="country" value={formData.country} onChange={handleFormChange} required helperText="e.g. IN, US, UK" slotProps={{
+                  htmlInput: { maxLength: 2 }
+                }} />
               </Grid>
             </Grid>
           </DialogContent>

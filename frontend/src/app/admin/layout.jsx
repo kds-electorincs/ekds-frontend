@@ -92,7 +92,9 @@ const DashboardLayout = ({ children }) => {
                 <ListItemIcon sx={{ color: isActive ? 'white' : 'primary.main' }}>
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: isActive ? 600 : 500 }} />
+                <ListItemText primary={item.text} slotProps={{
+                  primary: { fontWeight: isActive ? 600 : 500 }
+                }} />
               </ListItemButton>
             </ListItem>
           );

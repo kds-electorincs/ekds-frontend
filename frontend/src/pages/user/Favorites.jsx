@@ -37,7 +37,7 @@ const Favorites = () => {
       ) : favoriteProducts.length > 0 ? (
         <Grid container spacing={3}>
           {favoriteProducts.map(product => (
-            <Grid item xs={12} sm={6} md={4} key={product.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={product.id}>
               <ProductCard product={product} />
             </Grid>
           ))}

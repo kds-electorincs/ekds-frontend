@@ -100,16 +100,16 @@ const DashboardMaintenance = () => {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard icon={<ImageIcon fontSize="large" />} title="Orphan Images" count={stats.orphanImages} color="error" />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard icon={<DocumentIcon fontSize="large" />} title="Missing Documents" count={stats.missingDocs} color="warning" />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard icon={<BrokenIcon fontSize="large" />} title="Broken References" count={stats.brokenRefs} color="error" />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard icon={<CategoryIcon fontSize="large" />} title="Unused Attributes" count={stats.unusedAttrs} color="info" />
         </Grid>
       </Grid>

@@ -227,7 +227,7 @@ const ProductListing = () => {
           placeholder="Filter by attribute or word..."
           value={searchWithin}
           onChange={(e) => setSearchWithin(e.target.value)}
-          inputProps={{ 'aria-label': 'Filter matches by attribute or keyword' }}
+          slotProps={{ input: { 'aria-label': 'Filter matches by attribute or keyword' } }}
           sx={{ width: '100%', border: '1px solid #D6E4EE', borderRadius: 1, px: 1.5, py: 0.5, fontSize: '0.8125rem', bgcolor: '#f8fafc' }}
         />
       </Box>
@@ -430,7 +430,9 @@ const ProductListing = () => {
       </Grid>
 
       {/* Mobile Sidebar Drawer */}
-      <Drawer anchor="left" open={mobileFilterOpen} onClose={() => setMobileFilterOpen(false)} PaperProps={{ sx: { width: 300, p: 1 } }}>
+      <Drawer anchor="left" open={mobileFilterOpen} onClose={() => setMobileFilterOpen(false)} slotProps={{
+        paper: { sx: { width: 300, p: 1 } }
+      }}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
           <Button size="small" onClick={() => setMobileFilterOpen(false)} sx={{ fontWeight: 800 }}>CLOSE PANELS ✕</Button>
         </Box>

@@ -472,13 +472,13 @@ const DashboardProductDetails = () => {
         <Paper sx={{ p: 3, borderRadius: 4 }}>
           <Typography variant="h6" sx={{ mb: 3 }}>General Information</Typography>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Product Name" value={product.name || ''} onChange={(e) => setProduct({ ...product, name: e.target.value })} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="SKU / MPN" value={product.mpn || ''} onChange={(e) => setProduct({ ...product, mpn: e.target.value })} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth>
                 <InputLabel>Category</InputLabel>
                 <Select value={product.categoryId || ''} label="Category" onChange={(e) => setProduct({ ...product, categoryId: e.target.value })}>
@@ -488,13 +488,13 @@ const DashboardProductDetails = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Stock" type="number" disabled value={product.totalStock || 0} helperText="Stock is calculated from active packaging options" />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField fullWidth label="Description" multiline rows={4} value={product.description || ''} onChange={(e) => setProduct({ ...product, description: e.target.value })} />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControlLabel control={<Switch checked={product.active !== false} onChange={(e) => setProduct({ ...product, active: e.target.checked })} />} label="Active Status" />
             </Grid>
           </Grid>
@@ -513,7 +513,7 @@ const DashboardProductDetails = () => {
           </Box>
           <Grid container spacing={3}>
             {Object.entries(product.specs || {}).map(([key, val]) => (
-              <Grid item xs={12} md={6} key={key}>
+              <Grid size={{ xs: 12, md: 6 }} key={key}>
                 <TextField
                   fullWidth
                   label={key}
@@ -526,7 +526,7 @@ const DashboardProductDetails = () => {
               </Grid>
             ))}
             {Object.keys(product.specs || {}).length === 0 && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Typography color="text.secondary">No attributes defined yet.</Typography>
               </Grid>
             )}
@@ -676,7 +676,7 @@ const DashboardProductDetails = () => {
           </Box>
           <Grid container spacing={3}>
             {(product.images || []).map(img => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={img.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={img.id}>
                 <Paper sx={{ p: 1, borderRadius: 3, position: 'relative' }}>
                   <img src={img.url || `${CDN_BASE}/${img.objectKey}`} alt={img.name || 'Product Image'} style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 8 }} />
                   {img.isPrimary && (

@@ -111,7 +111,7 @@ const ProductDetails = () => {
               }
 
               return (
-                <Grid item xs={12} sm={6} md={4} key={attribute.id}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={attribute.id}>
                   <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.default', height: '100%' }}>
                     <Description color="primary" />
                     <Box>
@@ -158,14 +158,14 @@ Link: ${window.location.href}`;
     <Box sx={{ pb: 10 }}>
       <Grid container spacing={6}>
         {/* Product Image */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper elevation={0} sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
             <img src={imageUrl} alt={product.name} style={{ width: '100%', height: 'auto', display: 'block' }} />
           </Paper>
         </Grid>
 
         {/* Product Info */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Box>
             <Chip label={category?.name || "Product"} color="primary" variant="outlined" size="small" sx={{ mb: 2 }} />
             <Typography variant="h3" sx={{ fontWeight: 800, mb: 1, color: 'primary.main' }}>
@@ -240,7 +240,7 @@ Link: ${window.location.href}`;
             </Box>
 
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Button 
                   variant="outlined" 
                   fullWidth 
@@ -251,7 +251,7 @@ Link: ${window.location.href}`;
                   Request Quotation
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Button 
                   variant="outlined" 
                   color="success"
@@ -275,7 +275,7 @@ Link: ${window.location.href}`;
         </Grid>
 
         {/* Specifications */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Divider sx={{ mb: 6 }} />
           <Typography variant="h5" sx={{ mb: 4, fontWeight: 700 }}>Specifications</Typography>
           {renderSpecs()}
@@ -285,7 +285,7 @@ Link: ${window.location.href}`;
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Documents & Downloads</Typography>
               <Grid container spacing={2}>
                 {product.documents.map(doc => (
-                  <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={doc.id}>
                     <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
                       <Description color="primary" />
                       <Box>
@@ -304,12 +304,12 @@ Link: ${window.location.href}`;
 
         {/* Recently Viewed Products */}
         {recentProducts.length > 0 && (
-          <Grid item xs={12} sx={{ mt: 4 }}>
+          <Grid size={{ xs: 12 }} sx={{ mt: 4 }}>
             <Divider sx={{ mb: 6 }} />
             <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>Recently Viewed Products</Typography>
             <Grid container spacing={3}>
               {recentProducts.map((p) => (
-                <Grid item xs={12} sm={6} md={3} key={p.id}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={p.id}>
                   <Paper 
                     component={NextLink}
                     href={`/product/${p.id}`}

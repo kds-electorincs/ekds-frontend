@@ -323,7 +323,9 @@ const Checkout = () => {
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 5 }}>
           {steps.map((label) => (
             <Step key={label}>
-              <StepLabel StepIconProps={{ sx: { '&.Mui-active': { color: 'secondary.main' }, '&.Mui-completed': { color: 'primary.main' } } }}>
+              <StepLabel slotProps={{
+                stepIcon: { sx: { '&.Mui-active': { color: 'secondary.main' }, '&.Mui-completed': { color: 'primary.main' } } }
+              }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>{label}</Typography>
               </StepLabel>
             </Step>

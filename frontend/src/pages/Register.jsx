@@ -84,7 +84,7 @@ const Register = () => {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Full Name"
@@ -93,7 +93,7 @@ const Register = () => {
                 helperText={errors.fullName?.message}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Email Address"
@@ -105,7 +105,7 @@ const Register = () => {
             
             {regType === 'company' && (
               <>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
                     label="Company Name"
@@ -114,7 +114,7 @@ const Register = () => {
                     helperText={errors.companyName?.message}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
                     label="Tax / VAT ID"
@@ -126,7 +126,7 @@ const Register = () => {
               </>
             )}
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
                 label="Password"
@@ -136,7 +136,7 @@ const Register = () => {
                 helperText={errors.password?.message}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
                 label="Confirm Password"

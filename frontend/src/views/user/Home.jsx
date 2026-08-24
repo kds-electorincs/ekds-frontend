@@ -404,7 +404,7 @@ const Home = () => {
       {/* SECTION 2: 3-COLUMN TOOLS, SERVICES, CONTENT SECTION */}
       <Grid container spacing={3}>
         {toolsColumns.map((col, index) => (
-          <Grid item xs={12} md={4} key={index}>
+          <Grid size={{ xs: 12, md: 4 }} key={index}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -484,7 +484,7 @@ const Home = () => {
 
         <Grid container spacing={3}>
           {MOCK_CATEGORIES.map((cat) => (
-            <Grid item xs={12} sm={6} md={3} key={cat.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={cat.id}>
               <Card 
                 elevation={0}
                 sx={{ 
@@ -579,7 +579,7 @@ const Home = () => {
         {/* Product Cards Grid */}
         <Grid container spacing={3}>
           {MOCK_PRODUCTS.slice(0, 4).map((product) => (
-            <Grid item xs={12} sm={6} md={3} key={product.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={product.id}>
               <Card 
                 elevation={0}
                 sx={{ 

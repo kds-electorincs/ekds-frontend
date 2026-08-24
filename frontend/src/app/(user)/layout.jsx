@@ -124,9 +124,11 @@ const UserDashboardLayout = () => {
                       </ListItemIcon>
                       <ListItemText 
                         primary={item.text} 
-                        primaryTypographyProps={{ 
-                          fontSize: '0.8rem', 
-                          fontWeight: isActive ? 700 : 500 
+                        slotProps={{
+                          primary: { 
+                            fontSize: '0.8rem', 
+                            fontWeight: isActive ? 700 : 500 
+                          }
                         }} 
                       />
                     </ListItemButton>
@@ -152,7 +154,9 @@ const UserDashboardLayout = () => {
           <ListItemIcon sx={{ color: 'error.main', minWidth: 32 }}>
             <LogoutIcon sx={{ fontSize: 18 }} />
           </ListItemIcon>
-          <ListItemText primary="Logout" primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 600 }} />
+          <ListItemText primary="Logout" slotProps={{
+            primary: { fontSize: '0.8rem', fontWeight: 600 }
+          }} />
         </ListItemButton>
       </Box>
     </Box>

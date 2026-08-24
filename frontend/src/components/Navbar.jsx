@@ -235,7 +235,7 @@ const Navbar = () => {
                     value={searchVal}
                     onChange={handleSearchChange}
                     onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-                    inputProps={{ 'aria-label': 'Search industrial components by part number, manufacturer, or keyword' }}
+                    slotProps={{ input: { 'aria-label': 'Search industrial components by part number, manufacturer, or keyword' } }}
                   />
                   {searchVal && (
                     <IconButton size="small" onClick={() => { setSearchVal(''); setSuggestions([]); }} sx={{ mr: 0.5 }}>
@@ -366,7 +366,7 @@ const Navbar = () => {
                     {user.name || user.username || 'My Account'}
                   </Box>
                 </Button>
-                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleUserMenuClose} PaperProps={{ sx: { width: 220, mt: 1, borderRadius: 1 } }}>
+                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleUserMenuClose} slotProps={{ paper: { sx: { width: 220, mt: 1, borderRadius: 1 } } }}>
                   <Box sx={{ px: 2, py: 1 }}>
                     <Typography variant="caption" color="text.secondary">SIGNED IN AS</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', wordBreak: 'break-word' }}>
@@ -479,7 +479,9 @@ const Navbar = () => {
                       >
                         <ListItemText 
                           primary={cat.name} 
-                          primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: selectedCatIndex === idx ? 700 : 600, color: 'primary.main' }} 
+                          slotProps={{
+                            primary: { fontSize: '0.875rem', fontWeight: selectedCatIndex === idx ? 700 : 600, color: 'primary.main' }
+                          }} 
                         />
                         <ArrowForwardIosIcon sx={{ fontSize: 12, color: selectedCatIndex === idx ? 'primary.main' : '#A0B4C8' }} />
                       </ListItemButton>
@@ -510,7 +512,7 @@ const Navbar = () => {
                   <Grid container spacing={3}>
                     {megaMenuData[selectedCatIndex]?.subcategories?.length > 0 ? (
                       megaMenuData[selectedCatIndex].subcategories.map((sub, sIdx) => (
-                        <Grid item xs={12} sm={6} md={4} key={sIdx}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={sIdx}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main', mb: 1, borderBottom: '1px dashed #D6E4EE', pb: 0.5 }}>
                             {sub.name}
                           </Typography>
@@ -531,7 +533,7 @@ const Navbar = () => {
                         </Grid>
                       ))
                     ) : (
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center', fontStyle: 'italic' }}>
                           Direct specification sub-segmenting available on full category page. Click "View All in Series" to explore filtered inventory.
                         </Typography>
@@ -559,7 +561,9 @@ const Navbar = () => {
       </Box>
 
       {/* 4. Mobile Drawer Navigation */}
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 300, bgcolor: '#EDF4FA' } }}>
+      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} slotProps={{
+        paper: { sx: { width: 300, bgcolor: '#EDF4FA' } }
+      }}>
         <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" sx={{ fontWeight: 800 }}>KDS ELECTRONICS</Typography>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: 'white' }} aria-label="close drawer">
@@ -569,13 +573,19 @@ const Navbar = () => {
         <Divider />
         <List sx={{ pt: 0 }}>
           <ListItemButton component={RouterLink} to="/" onClick={() => setDrawerOpen(false)}>
-            <ListItemText primary="Home Command Portal" primaryTypographyProps={{ fontWeight: 700 }} />
+            <ListItemText primary="Home Command Portal" slotProps={{
+              primary: { fontWeight: 700 }
+            }} />
           </ListItemButton>
           <ListItemButton component={RouterLink} to="/products" onClick={() => setDrawerOpen(false)}>
-            <ListItemText primary="Browse Electronic Catalog" primaryTypographyProps={{ fontWeight: 700 }} />
+            <ListItemText primary="Browse Electronic Catalog" slotProps={{
+              primary: { fontWeight: 700 }
+            }} />
           </ListItemButton>
           <ListItemButton component={RouterLink} to={user ? "/user/quotations" : "/login"} onClick={() => setDrawerOpen(false)}>
-            <ListItemText primary="Request B2B Quotations" primaryTypographyProps={{ fontWeight: 700 }} />
+            <ListItemText primary="Request B2B Quotations" slotProps={{
+              primary: { fontWeight: 700 }
+            }} />
           </ListItemButton>
           <Divider sx={{ my: 1 }} />
           <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>
@@ -583,7 +593,9 @@ const Navbar = () => {
           </Typography>
           {megaMenuData.map((cat, i) => (
             <ListItemButton key={i} component={RouterLink} to={`/products?category=${encodeURIComponent(cat.slug || cat.name)}`} onClick={() => setDrawerOpen(false)}>
-              <ListItemText primary={cat.name} primaryTypographyProps={{ fontSize: '0.875rem' }} />
+              <ListItemText primary={cat.name} slotProps={{
+                primary: { fontSize: '0.875rem' }
+              }} />
             </ListItemButton>
           ))}
         </List>

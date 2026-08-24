@@ -260,7 +260,9 @@ const StaffManagement = () => {
         </TableContainer>
       )}
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth slotProps={{
+        paper: { sx: { borderRadius: 3 } }
+      }}>
         <DialogTitle sx={{ fontWeight: 800, pt: 3 }}>
           {editStaff?.id ? 'Edit Staff Permissions' : 'Invite New Staff Member'}
         </DialogTitle>

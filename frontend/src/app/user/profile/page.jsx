@@ -19,22 +19,22 @@ const Profile = () => {
       <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
         <form onSubmit={handleSave}>
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Full Name" defaultValue={user?.name} required />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Email Address" type="email" defaultValue={user?.email} required disabled />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Phone Number" defaultValue="+1 (555) 123-4567" />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField fullWidth label="Company Name" defaultValue="Acme Corp" />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField fullWidth label="Tax ID / VAT Number" defaultValue="US-123456789" />
             </Grid>
-            <Grid item xs={12} sx={{ mt: 2 }}>
+            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
               <Button variant="contained" color="primary" type="submit" size="large" sx={{ px: 4, borderRadius: 2 }}>
                 Save Changes
               </Button>

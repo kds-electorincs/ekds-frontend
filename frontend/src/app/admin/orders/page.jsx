@@ -69,12 +69,14 @@ const DashboardOrders = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{ flexGrow: 1, maxWidth: 400, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }
             }}
           />
           <Button 
@@ -160,17 +162,17 @@ const DashboardOrders = () => {
         <DialogContent dividers>
           {selectedOrder && (
             <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="subtitle2" color="text.secondary">Customer Information</Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedOrder.customer}</Typography>
                 <Typography variant="body2">{selectedOrder.email}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="subtitle2" color="text.secondary">Order Information</Typography>
                 <Typography variant="body2"><strong>Date:</strong> {selectedOrder.date}</Typography>
                 <Typography variant="body2"><strong>Status:</strong> {selectedOrder.status}</Typography>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Items ({selectedOrder.items})</Typography>
                 <Table size="small">

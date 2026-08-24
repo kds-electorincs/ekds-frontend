@@ -33,14 +33,16 @@ const CartDrawer = () => {
       anchor="right"
       open={isCartOpen}
       onClose={() => setIsCartOpen(false)}
-      PaperProps={{
-        sx: { 
-          width: { xs: '100%', sm: 420 }, 
-          display: 'flex', 
-          flexDirection: 'column',
-          borderTopLeftRadius: { xs: 0, sm: 24 },
-          borderBottomLeftRadius: { xs: 0, sm: 24 },
-          overflow: 'hidden'
+      slotProps={{
+        paper: {
+          sx: { 
+            width: { xs: '100%', sm: 420 }, 
+            display: 'flex', 
+            flexDirection: 'column',
+            borderTopLeftRadius: { xs: 0, sm: 24 },
+            borderBottomLeftRadius: { xs: 0, sm: 24 },
+            overflow: 'hidden'
+          }
         }
       }}
     >

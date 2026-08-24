@@ -191,7 +191,7 @@ const Quotations = () => {
         </Typography>
 
         <Grid container spacing={4}>
-          <Grid item xs={12} md={5}>
+          <Grid size={{ xs: 12, md: 5 }}>
             <TextField
               multiline
               rows={7}
@@ -200,8 +200,10 @@ const Quotations = () => {
               value={bomTextInput}
               onChange={(e) => setBomTextInput(e.target.value)}
               placeholder="e.g.&#10;IC-SN74LS00, 500&#10;CAP-100UF-50V, 2000&#10;RES-10K-0805, 5000"
-              inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.875rem', lineHeight: 1.5 } }}
               sx={{ bgcolor: '#f8fafc' }}
+              slotProps={{
+                htmlInput: { style: { fontFamily: 'monospace', fontSize: '0.875rem', lineHeight: 1.5 } }
+              }}
             />
             <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
               <Button
@@ -217,7 +219,7 @@ const Quotations = () => {
             </Box>
           </Grid>
 
-          <Grid item xs={12} md={7}>
+          <Grid size={{ xs: 12, md: 7 }}>
             {!bomValidated && !validatingBom ? (
               <Box sx={{ height: '100%', minHeight: 220, border: '2px dashed #A0B4C8', borderRadius: 1.5, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, textAlign: 'center', bgcolor: '#f8fafc' }}>
                 <FileUploadIcon sx={{ fontSize: 44, color: 'primary.light', mb: 1 }} />

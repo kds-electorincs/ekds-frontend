@@ -299,7 +299,7 @@ const Cart = () => {
 
       <Grid container spacing={4}>
         {/* ── Left: Items table ── */}
-        <Grid item xs={12} lg={8}>
+        <Grid size={{ xs: 12, lg: 8 }}>
           <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 1.5, border: '1px solid #D6E4EE', overflowX: 'auto' }}>
             <Table size="small">
               <TableHead sx={{ bgcolor: '#EDF4FA' }}>
@@ -352,7 +352,7 @@ const Cart = () => {
         </Grid>
 
         {/* ── Right: Totals & checkout ── */}
-        <Grid item xs={12} lg={4}>
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Paper elevation={0} sx={{ p: 3.5, borderRadius: 2, border: '2px solid #243A5E', bgcolor: '#ffffff' }}>
             <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 900, color: 'primary.main', textTransform: 'uppercase' }}>
               Procurement Valuation

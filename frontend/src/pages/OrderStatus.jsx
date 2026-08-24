@@ -202,7 +202,7 @@ const OrderStatus = () => {
         <Divider sx={{ my: 3 }} />
 
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>SHIPPING ADDRESS</Typography>
             {order.addresses?.filter(a => a.addressType === 'SHIPPING').map((addr, i) => (
               <Box key={i}>
@@ -211,7 +211,7 @@ const OrderStatus = () => {
               </Box>
             ))}
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>ORDER SUMMARY</Typography>
             <Typography variant="body2">Placed: {order.placedAt ? new Date(order.placedAt).toLocaleString() : '—'}</Typography>
             <Typography variant="body2">Items: {order.itemCount}</Typography>

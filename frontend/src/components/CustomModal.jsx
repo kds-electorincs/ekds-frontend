@@ -9,8 +9,10 @@ const CustomModal = ({ open, handleClose, title, children, actions }) => {
       onClose={handleClose} 
       fullWidth 
       maxWidth="sm"
-      PaperProps={{
-        sx: { borderRadius: 3, p: 1 }
+      slotProps={{
+        paper: {
+          sx: { borderRadius: 3, p: 1 }
+        }
       }}
     >
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

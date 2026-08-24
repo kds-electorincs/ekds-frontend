@@ -221,7 +221,7 @@ const ProductDetails = () => {
         <Grid container spacing={5}>
           
           {/* Left Column: Image Inspection Gallery */}
-          <Grid item xs={12} md={5}>
+          <Grid size={{ xs: 12, md: 5 }}>
             <Box sx={{ width: '100%', height: 380, bgcolor: '#f8fafc', border: '1px solid #D6E4EE', borderRadius: 1.5, p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, position: 'relative' }}>
               <Box component="img" src={imageArray[activeImageIndex]} alt={name} sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
               <Chip label={stock > 0 ? "🟢 READY TO DISPATCH" : (product.restockLeadDays != null ? `🟠 SHIPS IN ${product.restockLeadDays} DAYS` : "🟠 CONTACT FOR AVAILABILITY")} sx={{ position: 'absolute', bottom: 12, left: 12, fontWeight: 800, fontSize: '0.75rem', bgcolor: '#ffffff', border: '1px solid #D6E4EE' }} />
@@ -291,7 +291,7 @@ const ProductDetails = () => {
           </Grid>
 
           {/* Center Column: Technical Identifiers & Volume Pricing */}
-          <Grid item xs={12} md={7}>
+          <Grid size={{ xs: 12, md: 7 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 1.5 }}>
               <Box>
                 <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.dark', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
@@ -364,7 +364,7 @@ const ProductDetails = () => {
             {/* Procurement Cart Dispatch Box */}
             <Paper elevation={0} sx={{ p: 3, bgcolor: '#EDF4FA', border: '2px solid #243A5E', borderRadius: 1.5 }}>
               <Grid container spacing={3} alignItems="center">
-                <Grid item xs={12} sm={5}>
+                <Grid size={{ xs: 12, sm: 5 }}>
                   <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', textTransform: 'uppercase' }}>
                     DESIRED ORDER QUANTITY
                   </Typography>
@@ -385,8 +385,10 @@ const ProductDetails = () => {
                       value={quantity}
                       onChange={handleQtyInput}
                       size="small"
-                      inputProps={{ min: moq, style: { textAlign: 'center', fontWeight: 'bold', fontSize: '1rem' } }}
                       sx={{ width: 80, mx: 1, bgcolor: '#ffffff' }}
+                      slotProps={{
+                        htmlInput: { min: moq, style: { textAlign: 'center', fontWeight: 'bold', fontSize: '1rem' } }
+                      }}
                     />
                     <Tooltip title={`Step: ${step}`}>
                       <IconButton
@@ -408,7 +410,7 @@ const ProductDetails = () => {
                   </Typography>
                 </Grid>
 
-                <Grid item xs={12} sm={7}>
+                <Grid size={{ xs: 12, sm: 7 }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
                     <Button
                       variant="contained"
@@ -545,7 +547,7 @@ const ProductDetails = () => {
           </Typography>
           <Grid container spacing={2.5}>
             {relatedProducts.slice(0, 4).map((rp, idx) => (
-              <Grid item xs={12} sm={6} md={3} key={rp.id || rp._id || idx}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={rp.id || rp._id || idx}>
                 <ProductCard product={rp} viewMode="grid" />
               </Grid>
             ))}

@@ -59,16 +59,23 @@ const Checkout = () => {
 
   const handleNext = () => {
     if (activeStep === 0) {
-      if (!selectedAddress || user.profileComplete === false) {
-        notification.warning('Please select an approved corporate warehouse shipping destination to proceed.');
+
+      if (!selectedAddress) {
+        notification.warning('Please select a warehouse shipping destination to proceed.');
         return;
       }
+
+      // if (user?.profileComplete === false) {
+      //   notification.warning('Please complete your profile before proceeding.');
+      //   return;
+      // }
+
       setActiveStep(1);
+
     } else if (activeStep === 1) {
       placeOrder({});
     }
   };
-
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };

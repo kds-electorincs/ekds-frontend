@@ -52,9 +52,9 @@ const Cart = () => {
     return (
       <Box sx={{ py: 8 }}>
         <EmptyState
-          title="Please LogIn"
+          title="Please Log In"
           description="You need to be logged in to view your cart. Your cart is saved server-side."
-          actionText="LogIn"
+          actionText="Log In"
           onAction={() => navigate('/login')}
         />
       </Box>
@@ -78,7 +78,7 @@ const Cart = () => {
         <EmptyState
           title="Procurement Cart is Currently Empty"
           description="You have not added any industrial components or BOM specifications to your purchasing manifest."
-          actionText="Explore Component Master Catalogs"
+          actionText="Explore Component Master Catalog"
           onAction={() => navigate('/products')}
         />
       </Box>

@@ -29,9 +29,9 @@ const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cl
 const REASON_UI = {
   PACKAGING_INACTIVE: { label: 'No longer available', color: 'error' },
   PRODUCT_INACTIVE:   { label: 'Product discontinued', color: 'error' },
-  NO_PRICE:           { label: 'Price on request', color: 'Warning' },
-  BELOW_MOQ:          { label: 'Below minimum order', color: 'Warning' },
-  INVALID_MULTIPLE:   { label: 'Invalid quantity multiple', color: 'Warning' },
+  NO_PRICE:           { label: 'Price on request', color: 'warning' },
+  BELOW_MOQ:          { label: 'Below minimum order', color: 'warning' },
+  INVALID_MULTIPLE:   { label: 'Invalid quantity multiple', color: 'warning' },
   EXCEEDS_QTY_CAP:    { label: 'Exceeds maximum quantity', color: 'error' },
 };
 

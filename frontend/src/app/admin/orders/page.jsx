@@ -1,0 +1,210 @@
+"use client";
+import { useState } from 'react';
+import { 
+  Box, Typography, Button, Paper, Table, TableBody, TableCell, 
+  TableContainer, TableHead, TableRow, Chip, IconButton, 
+  TextField, InputAdornment, Tooltip, Dialog, DialogTitle,
+  DialogContent, DialogActions, Stepper, Step, StepLabel, Grid, Divider
+} from '@mui/material';
+import { 
+  Search as SearchIcon, Visibility as VisibilityIcon, 
+  FilterList as FilterListIcon,
+  LocalShipping as LocalShippingIcon
+} from '@mui/icons-material';
+import { toast } from 'react-toastify';
+
+const initialOrders = [
+  { id: 'ORD-1024', customer: 'Alice Smith', email: 'alice@example.com', date: '2026-05-06', items: 3, total: '$450.00', status: 'Processing' },
+  { id: 'ORD-1023', customer: 'Bob Johnson', email: 'bob@example.com', date: '2026-05-05', items: 1, total: '$120.00', status: 'Shipped' },
+  { id: 'ORD-1022', customer: 'Charlie Brown', email: 'charlie@example.com', date: '2026-05-04', items: 5, total: '$980.50', status: 'Delivered' },
+  { id: 'ORD-1021', customer: 'Diana Prince', email: 'diana@example.com', date: '2026-05-04', items: 2, total: '$340.00', status: 'Cancelled' },
+  { id: 'ORD-1020', customer: 'Evan Wright', email: 'evan@example.com', date: '2026-05-03', items: 1, total: '$50.00', status: 'Delivered' },
+];
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'Delivered': return 'success';
+    case 'Shipped': return 'info';
+    case 'Processing': return 'warning';
+    case 'Cancelled': return 'error';
+    default: return 'default';
+  }
+};
+
+const DashboardOrders = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [openTrackModal, setOpenTrackModal] = useState(false);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const handleTrackClick = (order) => {
+    setSelectedOrder(order);
+    setOpenTrackModal(true);
+  };
+
+  const handleDetailsClick = (order) => {
+    setSelectedOrder(order);
+    setOpenDetailsModal(true);
+  };
+
+  return (
+    <Box sx={{ pb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5 }}>
+            Orders
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            View and manage customer orders.
+          </Typography>
+        </Box>
+      </Box>
+
+      <Paper sx={{ borderRadius: 4, boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider', gap: 2 }}>
+          <TextField
+            placeholder="Search orders by ID or customer..."
+            variant="outlined"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ flexGrow: 1, maxWidth: 400, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }
+            }}
+          />
+          <Button 
+            variant="outlined" 
+            startIcon={<FilterListIcon />}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Filter By Status
+          </Button>
+        </Box>
+        <TableContainer>
+          <Table sx={{ minWidth: 800 }}>
+            <TableHead sx={{ bgcolor: 'background.default' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Order ID</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Customer</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Items</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Status</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {initialOrders.map((row) => (
+                <TableRow key={row.id} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
+                  <TableCell sx={{ fontWeight: 600, color: 'primary.main' }}>{row.id}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.customer}</Typography>
+                    <Typography variant="caption" color="text.secondary">{row.email}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ color: 'text.secondary' }}>{row.date}</TableCell>
+                  <TableCell>{row.items}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{row.total}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={row.status} 
+                      color={getStatusColor(row.status)}
+                      size="small"
+                      sx={{ fontWeight: 600, borderRadius: 1.5, px: 1 }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Track Shipment / Workflow">
+                      <IconButton size="small" color="secondary" sx={{ mr: 1 }} onClick={() => handleTrackClick(row)}>
+                        <LocalShippingIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="View Order Details">
+                      <IconButton size="small" color="primary" onClick={() => handleDetailsClick(row)}>
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* Track Shipment Modal */}
+      <Dialog open={openTrackModal} onClose={() => setOpenTrackModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Track Shipment: {selectedOrder?.id}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ pt: 2, pb: 2 }}>
+            <Stepper activeStep={selectedOrder?.status === 'Delivered' ? 3 : selectedOrder?.status === 'Shipped' ? 2 : 1} alternativeLabel>
+              <Step><StepLabel>Order Placed</StepLabel></Step>
+              <Step><StepLabel>Processing</StepLabel></Step>
+              <Step><StepLabel>Shipped</StepLabel></Step>
+              <Step><StepLabel>Delivered</StepLabel></Step>
+            </Stepper>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, px: 3 }}>
+          <Button onClick={() => setOpenTrackModal(false)} color="primary" variant="contained">Close Tracking</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Order Details Modal */}
+      <Dialog open={openDetailsModal} onClose={() => setOpenDetailsModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Order Details: {selectedOrder?.id}</DialogTitle>
+        <DialogContent dividers>
+          {selectedOrder && (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="subtitle2" color="text.secondary">Customer Information</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedOrder.customer}</Typography>
+                <Typography variant="body2">{selectedOrder.email}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="subtitle2" color="text.secondary">Order Information</Typography>
+                <Typography variant="body2"><strong>Date:</strong> {selectedOrder.date}</Typography>
+                <Typography variant="body2"><strong>Status:</strong> {selectedOrder.status}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Items ({selectedOrder.items})</Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell align="right">Price</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Sample Product</TableCell>
+                      <TableCell align="right">{selectedOrder.items}</TableCell>
+                      <TableCell align="right">{selectedOrder.total}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Total: {selectedOrder.total}</Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, px: 3 }}>
+          <Button onClick={() => setOpenDetailsModal(false)} color="inherit">Close</Button>
+          <Button variant="contained" color="primary">Download Invoice</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default DashboardOrders;

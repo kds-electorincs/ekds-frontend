@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 
 // Create base instance
 const axiosClient = axios.create({
+  // baseURL: import.meta.env.VITE_API_BASE_URL || 'https://d33txvk614c5de.cloudfront.net',
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   timeout: 15000,
   headers: {
@@ -62,10 +63,10 @@ axiosClient.interceptors.response.use(
 
     const { status, data } = error.response;
 
-    // Handle 401 Unauthorized (Token Expiry)
-    if (status === 401 && !originalRequest._retry) {
+    // Handle 401 Unauthorized or 403 on protected endpoints (Known Backend Quirk for /users/me/**)
+    const isProtectedCall = originalRequest.url && originalRequest.url.includes('/users/me');
+    if ((status === 401 || (status === 403 && isProtectedCall)) && !originalRequest._retry) {
       if (originalRequest.url.includes('/auth/refresh') || originalRequest.url.includes('/auth/login')) {
-        // Refresh token itself is expired, or login credentials invalid
         return Promise.reject(error);
       }
 
@@ -116,12 +117,44 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    // Pass custom backend validation messages
-    const errorMsg = data?.message || 'Request failed';
+    // Support RFC 7807 ProblemDetail formatting and custom backend messages
+    let errorMsg = data?.detail || data?.title || data?.message || 'Request failed';
+    if (data?.errors && typeof data.errors === 'object') {
+      const fieldErrors = Object.entries(data.errors)
+        .map(([field, msg]) => `${field}: ${msg}`)
+        .join(' | ');
+      if (fieldErrors) {
+        errorMsg = `${errorMsg} (${fieldErrors})`;
+      }
+    }
+
     if (status === 403) {
-      toast.error('Access Denied: You do not have permission.');
-    } else if (status === 422 || status === 400) {
+      // KDS spec §9 known backend defect (currency guide §8):
+      // 403 with an EMPTY body = malformed request (e.g. a missing/invalid
+      // ?currency= on a public /api/store/* or /api/search/* endpoint), NOT
+      // a permissions failure. Do NOT show "Access Denied" or log the user
+      // out — it would be misleading. Only show the Access Denied toast when
+      // the response body has actual content (a real problem+json auth
+      // failure on an authenticated endpoint always has one).
+      // Note: this branch runs regardless of the 401/403-refresh branch
+      // above, which itself only ever retries on a 403 whose URL matches
+      // isProtectedCall (currently just /users/me) — /store/* and /search/*
+      // never match that, so they never reach the refresh flow at all, empty
+      // body or not.
+      const hasBody = data && (typeof data === 'object' ? Object.keys(data).length > 0 : String(data).trim().length > 0);
+      if (hasBody) {
+        toast.error('Access Denied: You do not have permission.');
+      }
+      // Empty-body 403 → suppress toast; caller handles the rejection.
+    } else if (status === 422 || status === 400 || status === 409) {
       toast.warning(errorMsg);
+    } else if (status === 503) {
+      // Currency guide §8: no FX rate available for the requested currency
+      // yet (backend between polls, or the provider is down). Transient,
+      // not fatal — callers on price-fetching screens should retry or fall
+      // back to INR; this toast just names what happened instead of the
+      // generic 500 message.
+      toast.warning('Live pricing is temporarily unavailable for this currency. Retrying in INR…');
     } else if (status >= 500) {
       toast.error('Server Error: Please try again later.');
     }

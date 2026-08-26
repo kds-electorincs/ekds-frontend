@@ -16,6 +16,8 @@ import ProductListing from './pages/ProductListing';
 import ProductDetails from './pages/ProductDetails';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
+import OrderStatus from './pages/OrderStatus';
+import OrdersLanding from './pages/OrdersLanding';
 
 // User Pages
 import UserDashboard from './pages/user/UserDashboard';
@@ -93,9 +95,12 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
-          {/* Cart & Checkout */}
+          {/* E-Commerce Cart, Checkout & Order/Payment Status */}
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          {/* Razorpay callback redirect targets (guide §1) */}
+          <Route path="/orders" element={<OrdersLanding />} />
+          <Route path="/orders/:orderNumber" element={<OrderStatus />} />
         </Route>
 
         {/* CUSTOMER DASHBOARD ROUTES */}

@@ -38,12 +38,13 @@ const getStartingPrice = (row) => {
       (pkg.priceBreaks || []).forEach(pb => {
          if (pb.unitPriceMinor < lowest) {
             lowest = pb.unitPriceMinor;
-            curr = pb.currency;
+            curr = pb.currency || 'USD';
          }
       });
     });
     if (lowest !== Infinity) {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(lowest / 100);
+      const validCurrency = (curr && typeof curr === 'string' && curr.trim().length === 3) ? curr.trim().toUpperCase() : 'USD';
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: validCurrency }).format(lowest / 100);
     }
   }
   return 'N/A';
@@ -314,12 +315,14 @@ const DashboardProducts = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{ flexGrow: 1, maxWidth: 400, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }
             }}
           />
           <FormControl size="small" sx={{ minWidth: 200, borderRadius: 2 }}>

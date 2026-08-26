@@ -146,6 +146,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshProfile = async () => {
+    if (!accessToken && !sessionStorage.getItem('token')) return null;
+    try {
+      const profileResponse = await axiosClient.get('/users/me');
+      const updatedProfile = profileResponse.data || profileResponse;
+      if (updatedProfile && user) {
+        const newUserData = { ...user, ...updatedProfile };
+        setUser(newUserData);
+        sessionStorage.setItem('user', JSON.stringify(newUserData));
+        return newUserData;
+      }
+      return updatedProfile;
+    } catch (err) {
+      console.error('Failed to refresh user profile:', err.message);
+      return null;
+    }
+  };
+
   const hasPermission = (permission) => {
     if (!user) return false;
     const permissions = ROLE_PERMISSIONS[user.role] || [];
@@ -157,7 +175,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasPermission, hasRole, accessToken }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshProfile, hasPermission, hasRole, accessToken }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -16,40 +16,8 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { toast } from 'react-toastify';
 
-const initialUsers = [
-  { id: 1, name: 'Alice Smith', email: 'alice@example.com', role: 'Admin', status: 'Active', joined: '2023-01-15' },
-  { id: 2, name: 'Bob Johnson', email: 'bob@example.com', role: 'Manager', status: 'Active', joined: '2023-03-22' },
-  { id: 3, name: 'Charlie Brown', email: 'charlie@example.com', role: 'Staff', status: 'Inactive', joined: '2023-06-10' },
-  { id: 4, name: 'Diana Prince', email: 'diana@example.com', role: 'Customer', status: 'Active', joined: '2023-08-05' },
-  { id: 5, name: 'Evan Wright', email: 'evan@example.com', role: 'Customer', status: 'Active', joined: '2023-11-20' },
-];
-
-const initialPendingB2B = [
-  { 
-    id: 101, 
-    companyName: 'Apex Industrial Solenoids Ltd', 
-    gstin: '27AADCA1234F1Z5', 
-    representative: 'John Doe', 
-    email: 'john@apexsolenoids.com', 
-    documentUrl: 'gst_cert_apex.pdf', 
-    submittedAt: '2026-06-04', 
-    status: 'Pending',
-    address: 'Plot 45, MIDC Industrial Area, Phase II, Andheri East, Mumbai, Maharashtra 400093',
-    constitution: 'Private Limited Company'
-  },
-  { 
-    id: 102, 
-    companyName: 'Techno Components India', 
-    gstin: '19AAACT5678B2Z0', 
-    representative: 'Meera Sen', 
-    email: 'meera@technocomponents.in', 
-    documentUrl: 'gst_registration_techno.pdf', 
-    submittedAt: '2026-06-05', 
-    status: 'Pending',
-    address: 'Infinity Tower, Block GP, Sector V, Salt Lake, Kolkata, West Bengal 700091',
-    constitution: 'Partnership Firm'
-  }
-];
+const initialUsers = [];
+const initialPendingB2B = [];
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -251,12 +219,14 @@ const DashboardUsers = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{ flexGrow: 1, maxWidth: 400, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }
             }}
           />
           <Button 

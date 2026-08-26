@@ -1,78 +1,71 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { createContext, useContext, useState, useEffect } from 'react';
+import axiosClient from '../api/axiosClient';
 
 const CurrencyContext = createContext(null);
 
 export const CurrencyProvider = ({ children }) => {
-  const [currency, setCurrency] = useState(() => {
-    return sessionStorage.getItem('currency') || 'USD';
-  });
-  const [rates, setRates] = useState({
-    USD: 1.0,
-    INR: 83.5,
-    EUR: 0.92,
-    GBP: 0.78
+  const [currency, setCurrencyState] = useState(() => {
+    return sessionStorage.getItem('currency') || 'INR';
   });
 
+  // Supported currencies list from the backend (GET /store/products/currencies)
+  // If this returns a single currency, the currency selector should be hidden.
+  const [supportedCurrencies, setSupportedCurrencies] = useState([]);
+  const [showCurrencySelector, setShowCurrencySelector] = useState(false);
+
+  // ─── Fetch supported currencies from backend (spec §10) ──────────────────
   useEffect(() => {
-    const fetchRates = async () => {
+    const fetchSupportedCurrencies = async () => {
       try {
-        // Fetching live USD exchange rates from a completely free, open CORS exchange rate API
-        const response = await axios.get('https://open.er-api.com/v6/latest/USD');
-        if (response.data && response.data.rates) {
-          setRates(response.data.rates);
-          console.log('Live currency rates fetched successfully:', response.data.rates);
+        // GET /api/store/products/currencies — returns string[] e.g. ["INR", "USD"]
+        const result = await axiosClient.get('/store/products/currencies');
+        const list = Array.isArray(result) ? result : (result?.data ?? []);
+        if (list.length > 0) {
+          setSupportedCurrencies(list);
+          // Spec §10: hide currency selector entirely if only 1 currency is supported
+          setShowCurrencySelector(list.length > 1);
+          // If current currency is no longer in the supported list, reset to first
+          if (!list.includes(currency)) {
+            const first = list[0];
+            setCurrencyState(first);
+            sessionStorage.setItem('currency', first);
+          }
         }
-      } catch (error) {
-        console.warn('Failed to fetch live exchange rates from open.er-api.com, using fallback rates:', error.message);
+      } catch (err) {
+        // Backend may be unreachable during development — fail silently
+        console.warn('[CurrencyContext] Failed to fetch supported currencies:', err?.message);
+        // Default: show selector with common currencies as fallback
+        setSupportedCurrencies(['INR', 'USD', 'EUR', 'GBP']);
+        setShowCurrencySelector(true);
       }
     };
-    
-    fetchRates();
-  }, []);
+
+    fetchSupportedCurrencies();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Persist currency selection ───────────────────────────────────────────
+  const setCurrency = (newCurrency) => {
+    setCurrencyState(newCurrency);
+    sessionStorage.setItem('currency', newCurrency);
+  };
 
   useEffect(() => {
     sessionStorage.setItem('currency', currency);
   }, [currency]);
 
-  const formatPrice = (priceVal) => {
-    if (priceVal === undefined || priceVal === null) return '';
-
-    let amount = 0;
-    if (typeof priceVal === 'number') {
-      amount = priceVal;
-    } else if (typeof priceVal === 'string') {
-      // Strips currency symbols ($, ₹, €, £) and commas, parsing the base value in USD
-      amount = parseFloat(priceVal.replace(/[^0-9.-]+/g, '')) || 0;
-    }
-
-    const rate = rates[currency] || 1.0;
-    const converted = amount * rate;
-
-    const symbols = {
-      USD: '$',
-      INR: '₹',
-      EUR: '€',
-      GBP: '£'
-    };
-
-    const symbol = symbols[currency] || '$';
-    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const convertPrice = (priceVal) => {
-    let amount = 0;
-    if (typeof priceVal === 'number') {
-      amount = priceVal;
-    } else if (typeof priceVal === 'string') {
-      amount = parseFloat(priceVal.replace(/[^0-9.-]+/g, '')) || 0;
-    }
-    const rate = rates[currency] || 1.0;
-    return amount * rate;
-  };
+  // No formatPrice/convertPrice here (guide §7: never do FX arithmetic on
+  // the frontend — the backend is the single conversion point, and every
+  // priced response already carries its numbers in the requested display
+  // currency). For rendering, use utils/priceUtils.js's formatPrice/
+  // formatTotal against a response's own scaled/priceScale/currency fields.
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, rates, formatPrice, convertPrice }}>
+    <CurrencyContext.Provider value={{
+      currency,
+      setCurrency,
+      supportedCurrencies,
+      showCurrencySelector,
+    }}>
       {children}
     </CurrencyContext.Provider>
   );

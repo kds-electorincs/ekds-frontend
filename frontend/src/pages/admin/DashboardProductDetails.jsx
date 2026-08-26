@@ -29,9 +29,9 @@ const DashboardProductDetails = () => {
   const [fileAttributes, setFileAttributes] = useState([]);
   const [loading, setLoading] = useState(true);
   const { uploadFile, isUploading } = useS3Upload();
-  const [currency, setCurrency] = useState('USD');
-  const [currencies, setCurrencies] = useState([{ code: 'USD', displayName: '$ US Dollar' }]);
-  const [packagingTypes, setPackagingTypes] = useState([{ code: 'CUT_TAPE', displayName: 'Cut Tape' }]);
+  const [currency, setCurrency] = useState('INR');
+  const [currencies, setCurrencies] = useState([]);
+  const [packagingTypes, setPackagingTypes] = useState([]);
   const [exchangeRates, setExchangeRates] = useState(null);
 
   useEffect(() => {
@@ -70,9 +70,17 @@ const DashboardProductDetails = () => {
           configAdminService.getPackagingTypes(),
           categoryAdminService.listCategories({ page: 0, size: 100 })
         ]);
-        setCurrencies(currRes.data || currRes);
-        setPackagingTypes(pkgRes.data || pkgRes);
+        const loadedCurrencies = currRes.data || currRes || [];
+        const loadedPackaging = pkgRes.data || pkgRes || [];
+        setCurrencies(loadedCurrencies);
+        setPackagingTypes(loadedPackaging);
         setCategories(catRes.data?.content || catRes.content || []);
+        if (Array.isArray(loadedCurrencies) && loadedCurrencies.length > 0) {
+          setCurrency(prev => (prev && loadedCurrencies.some(c => c.code === prev)) ? prev : loadedCurrencies[0].code);
+        }
+        if (Array.isArray(loadedPackaging) && loadedPackaging.length > 0) {
+          setPkgForm(prev => ({ ...prev, type: prev.type || loadedPackaging[0].code }));
+        }
       } catch (err) {
         console.error('Failed to load catalog config', err);
       }
@@ -125,8 +133,8 @@ const DashboardProductDetails = () => {
   const [selectedPkgId, setSelectedPkgId] = useState(null);
   const [selectedPriceId, setSelectedPriceId] = useState(null);
 
-  const [pkgForm, setPkgForm] = useState({ type: 'CUT_TAPE', moq: 1, inventory: 0, leadTime: '', status: 'Active' });
-  const [priceForm, setPriceForm] = useState({ qtyLimit: 1, price: 0, currency: 'USD' });
+  const [pkgForm, setPkgForm] = useState({ type: '', moq: 1, inventory: 0, leadTime: '', status: 'Active' });
+  const [priceForm, setPriceForm] = useState({ qtyLimit: 1, price: 0, currency: 'INR' });
   const [docForm, setDocForm] = useState({ name: '', attributeId: '', file: null });
   const [newAttrName, setNewAttrName] = useState('');
 
@@ -388,21 +396,23 @@ const DashboardProductDetails = () => {
     }
   };
 
-  const convertPrice = (priceMinor, baseCurrency) => {
+  const convertPrice = (priceMinor, baseCurrency = 'INR') => {
     const amount = priceMinor / 100;
-    const targetCurrency = currency;
+    const targetCurrency = currency || 'INR';
+    const validBase = (baseCurrency && typeof baseCurrency === 'string' && baseCurrency.trim().length === 3) ? baseCurrency.trim().toUpperCase() : 'INR';
+    const validTarget = (targetCurrency && typeof targetCurrency === 'string' && targetCurrency.trim().length === 3) ? targetCurrency.trim().toUpperCase() : 'INR';
 
     // Fallback if rates aren't loaded or it's the exact same currency
-    if (!exchangeRates || baseCurrency === targetCurrency) {
+    if (!exchangeRates || validBase === validTarget) {
       return new Intl.NumberFormat(undefined, {
         style: 'currency',
-        currency: baseCurrency || 'USD',
+        currency: validBase,
         minimumFractionDigits: 2
       }).format(amount);
     }
 
-    const rateBase = exchangeRates[baseCurrency] || 1;
-    const rateTarget = exchangeRates[targetCurrency] || 1;
+    const rateBase = exchangeRates[validBase] || 1;
+    const rateTarget = exchangeRates[validTarget] || 1;
 
     // 1. Convert to target currency
     let convertedAmount = amount * (rateTarget / rateBase);
@@ -417,7 +427,7 @@ const DashboardProductDetails = () => {
 
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: targetCurrency,
+      currency: validTarget,
       minimumFractionDigits: 2
     }).format(finalAmount);
   };
@@ -470,13 +480,13 @@ const DashboardProductDetails = () => {
         <Paper sx={{ p: 3, borderRadius: 4 }}>
           <Typography variant="h6" sx={{ mb: 3 }}>General Information</Typography>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Product Name" value={product.name || ''} onChange={(e) => setProduct({ ...product, name: e.target.value })} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="SKU / MPN" value={product.mpn || ''} onChange={(e) => setProduct({ ...product, mpn: e.target.value })} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth>
                 <InputLabel>Category</InputLabel>
                 <Select value={product.categoryId || ''} label="Category" onChange={(e) => setProduct({ ...product, categoryId: e.target.value })}>
@@ -486,13 +496,13 @@ const DashboardProductDetails = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Stock" type="number" disabled value={product.totalStock || 0} helperText="Stock is calculated from active packaging options" />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField fullWidth label="Description" multiline rows={4} value={product.description || ''} onChange={(e) => setProduct({ ...product, description: e.target.value })} />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControlLabel control={<Switch checked={product.active !== false} onChange={(e) => setProduct({ ...product, active: e.target.checked })} />} label="Active Status" />
             </Grid>
           </Grid>
@@ -511,7 +521,7 @@ const DashboardProductDetails = () => {
           </Box>
           <Grid container spacing={3}>
             {Object.entries(product.specs || {}).map(([key, val]) => (
-              <Grid item xs={12} md={6} key={key}>
+              <Grid size={{ xs: 12, md: 6 }} key={key}>
                 <TextField
                   fullWidth
                   label={key}
@@ -524,7 +534,7 @@ const DashboardProductDetails = () => {
               </Grid>
             ))}
             {Object.keys(product.specs || {}).length === 0 && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Typography color="text.secondary">No attributes defined yet.</Typography>
               </Grid>
             )}
@@ -612,7 +622,7 @@ const DashboardProductDetails = () => {
                 <Typography variant="subtitle1" fontWeight={600}>Packaging: {pkg.displayName || pkg.packagingType}</Typography>
                 <Button size="small" startIcon={<AddIcon />} onClick={() => {
                   setSelectedPkgId(pkg.id);
-                  setPriceForm({ qtyLimit: 1, price: 0, currency: 'USD' });
+                  setPriceForm({ qtyLimit: 1, price: 0, currency: currencies[0]?.code || 'INR' });
                   setOpenPriceModal(true);
                 }}>Add Price Break</Button>
               </Box>
@@ -633,7 +643,7 @@ const DashboardProductDetails = () => {
                         <IconButton size="small" color="secondary" onClick={() => {
                           setSelectedPkgId(pkg.id);
                           setSelectedPriceId(price.id);
-                          setPriceForm({ qtyLimit: price.minQuantity, price: (price.unitPriceMinor / 100).toFixed(2), currency: price.currency || 'USD' });
+                          setPriceForm({ qtyLimit: price.minQuantity, price: (price.unitPriceMinor / 100).toFixed(2), currency: price.currency || currencies[0]?.code || 'INR' });
                           setOpenEditPriceModal(true);
                         }}>
                           <EditIcon fontSize="small" />
@@ -674,7 +684,7 @@ const DashboardProductDetails = () => {
           </Box>
           <Grid container spacing={3}>
             {(product.images || []).map(img => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={img.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={img.id}>
                 <Paper sx={{ p: 1, borderRadius: 3, position: 'relative' }}>
                   <img src={img.url || `${CDN_BASE}/${img.objectKey}`} alt={img.name || 'Product Image'} style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 8 }} />
                   {img.isPrimary && (

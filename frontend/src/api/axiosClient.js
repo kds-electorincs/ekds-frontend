@@ -38,7 +38,7 @@ export const injectTokenAccessors = (getAccessToken, setAccessToken) => {
 // Request Interceptor: Inject Access Token
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = getAccessTokenFn();
+    const token = getAccessTokenFn() || sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

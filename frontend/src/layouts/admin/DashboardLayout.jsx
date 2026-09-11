@@ -13,7 +13,8 @@ import {
   AdminPanelSettings as SecurityIcon,
   History as HistoryIcon,
   Settings as SettingsIcon,
-  Build as BuildIcon
+  Build as BuildIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { Link as RouterLink, Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -46,9 +47,9 @@ const DashboardLayout = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard', permission: PERMISSIONS.VIEW_DASHBOARD },
     { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories', permission: PERMISSIONS.MANAGE_CATEGORIES },
     { text: 'Products', icon: <InventoryIcon />, path: '/admin/products', permission: PERMISSIONS.MANAGE_PRODUCTS },
-    // { text: 'Media CMS', icon: <PhotoLibraryIcon />, path: '/admin/media', permission: PERMISSIONS.MANAGE_MEDIA },
-    // { text: 'Catalog Config', icon: <SettingsIcon />, path: '/admin/catalog-config', permission: PERMISSIONS.MANAGE_CONFIG },
-    // { text: 'Maintenance', icon: <BuildIcon />, path: '/admin/maintenance', permission: PERMISSIONS.MANAGE_MAINTENANCE },
+    { text: 'Orders', icon: <ShoppingCartIcon />, path: '/admin/orders', permission: PERMISSIONS.MANAGE_ORDERS },
+    { text: 'Staff & RBAC', icon: <SecurityIcon />, path: '/admin/staff', permission: PERMISSIONS.MANAGE_STAFF },
+    { text: 'Discrepancies', icon: <WarningIcon />, path: '/admin/discrepancies', permission: PERMISSIONS.MANAGE_DISCREPANCIES },
   ];
 
   const menuItems = allMenuItems.filter(item => hasPermission(item.permission));

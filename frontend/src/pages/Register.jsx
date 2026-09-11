@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, TextField, Button, Link, Grid, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Link, Grid, ToggleButton, ToggleButtonGroup, Divider } from '@mui/material';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -10,6 +11,7 @@ import { authService } from '../services/apiServices';
 const schema = yup.object({
   fullName: yup.string().required('Full Name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
+  phone: yup.string(),
   password: yup.string().required('Password is required'),
   confirmPassword: yup.string().oneOf([yup.ref('password'), null], 'Passwords must match'),
   companyName: yup.string().when('regType', {
@@ -42,7 +44,12 @@ const Register = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const payload = { ...data, type: regType };
+      const payload = {
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone || '',
+        password: data.password
+      };
       await authService.register(payload);
       
       notification.success('Registration successful! Please login.');
@@ -51,7 +58,6 @@ const Register = () => {
       navigate(loginPath, { state: { from } });
     } catch (error) {
       console.error('Registration failed:', error);
-      // Note: The global error handler in axiosInstance will automatically show toast errors
     } finally {
       setLoading(false);
     }
@@ -84,13 +90,22 @@ const Register = () => {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
                 label="Full Name"
                 {...register('fullName')}
                 error={!!errors.fullName}
                 helperText={errors.fullName?.message}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Phone Number"
+                {...register('phone')}
+                error={!!errors.phone}
+                helperText={errors.phone?.message}
               />
             </Grid>
             <Grid size={{ xs: 12 }}>
@@ -160,7 +175,17 @@ const Register = () => {
           </Button>
         </form>
 
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <Box sx={{ my: 3, display: 'flex', alignItems: 'center' }}>
+          <Divider sx={{ flex: 1 }} />
+          <Typography variant="caption" color="text.secondary" sx={{ px: 2, fontWeight: 600 }}>
+            OR
+          </Typography>
+          <Divider sx={{ flex: 1 }} />
+        </Box>
+
+        <GoogleLoginButton text="signup_with" />
+
+        <Box sx={{ textAlign: 'center', mt: 3 }}>
           <Typography variant="body2" color="text.secondary">
             Already have an account?{' '}
             <Link 

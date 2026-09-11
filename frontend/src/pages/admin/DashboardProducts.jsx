@@ -174,6 +174,46 @@ const DashboardProducts = () => {
     return row.name.toLowerCase().includes(term) || row.sku.toLowerCase().includes(term);
   });
 
+  const [categoryDetailsLoading, setCategoryDetailsLoading] = useState(false);
+  const [categoryAttributes, setCategoryAttributes] = useState([]);
+  const [dynamicSpecs, setDynamicSpecs] = useState({});
+
+  const handleCategoryChange = async (categoryId) => {
+    setAddForm(prev => ({ ...prev, category: categoryId }));
+    setDynamicSpecs({});
+    setCategoryAttributes([]);
+    
+    if (!categoryId) return;
+
+    setCategoryDetailsLoading(true);
+    try {
+      const res = await categoryAdminService.getCategory(categoryId);
+      const categoryData = res.data || res;
+      // Extract all active attributes across segments
+      const attributesList = [];
+      if (categoryData.segments && Array.isArray(categoryData.segments)) {
+        categoryData.segments.forEach(segment => {
+          if (segment.active !== false && segment.attributes && Array.isArray(segment.attributes)) {
+            segment.attributes.forEach(attr => {
+              if (attr.active !== false) {
+                attributesList.push({
+                  ...attr,
+                  segmentName: segment.name
+                });
+              }
+            });
+          }
+        });
+      }
+      setCategoryAttributes(attributesList);
+    } catch (err) {
+      console.error('Failed to fetch category attributes:', err);
+      toast.error('Failed to load category attributes.');
+    } finally {
+      setCategoryDetailsLoading(false);
+    }
+  };
+
   const handleAddProduct = async () => {
     if (!addForm.name || !addForm.sku || !addForm.category || !addForm.packType || !addForm.currency || !addForm.price) {
       toast.error('Please fill in Name, SKU, Category, Price, Pack Type, and Currency');
@@ -192,15 +232,30 @@ const DashboardProducts = () => {
         });
       }
 
+      // Convert dynamic specs values based on datatype (e.g. NUMBER -> Number)
+      const formattedSpecs = {};
+      categoryAttributes.forEach(attr => {
+        const val = dynamicSpecs[attr.attrKey];
+        if (val !== undefined && val !== null && val !== '') {
+          if (attr.datatype === 'NUMBER' || attr.datatype === 'NUMERIC') {
+            formattedSpecs[attr.attrKey] = Number(val);
+          } else if (attr.datatype === 'BOOLEAN') {
+            formattedSpecs[attr.attrKey] = Boolean(val);
+          } else {
+            formattedSpecs[attr.attrKey] = String(val);
+          }
+        }
+      });
+
       // Send real request to backend
       const payload = {
         name: addForm.name,
         mpn: addForm.sku,
         categoryId: parseInt(addForm.category),
-        manufacturer: "Default",
-        description: "",
+        manufacturer: addForm.manufacturer || "Default",
+        description: addForm.description || "",
         restockLeadDays: 0,
-        specs: {},
+        specs: formattedSpecs,
         meta: { hiddenSegments: [], hiddenAttributes: [] },
         packagingOptions: [
           {
@@ -222,10 +277,14 @@ const DashboardProducts = () => {
       setOpenAddModal(false);
       const catId = parseInt(addForm.category);
       setSelectedCategoryId(catId);
-      setAddForm({ name: '', sku: '', price: '', category: '', stock: '', packType: '', currency: '', imageFile: null });
+      setAddForm({ name: '', sku: '', price: '', category: '', stock: '', packType: '', currency: '', imageFile: null, manufacturer: '', description: '' });
+      setCategoryAttributes([]);
+      setDynamicSpecs({});
       fetchData(catId);
     } catch (err) {
-      toast.error('Failed to add product');
+      console.error('Failed to add product:', err);
+      const serverMsg = err.response?.data?.detail || err.response?.data?.message || err.message;
+      toast.error(`Failed to add product: ${serverMsg}`);
     }
   };
 
@@ -406,7 +465,7 @@ const DashboardProducts = () => {
       </Paper>
 
       {/* Add Product Modal */}
-      <Dialog open={openAddModal} onClose={() => setOpenAddModal(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openAddModal} onClose={() => setOpenAddModal(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>Add New Product</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
@@ -420,10 +479,17 @@ const DashboardProducts = () => {
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField 
                 fullWidth 
-                label="SKU" 
+                label="SKU (MPN)" 
                 variant="outlined" 
                 value={addForm.sku} 
                 onChange={(e) => setAddForm({ ...addForm, sku: e.target.value })} 
+              />
+              <TextField 
+                fullWidth 
+                label="Manufacturer" 
+                variant="outlined" 
+                value={addForm.manufacturer || ''} 
+                onChange={(e) => setAddForm({ ...addForm, manufacturer: e.target.value })} 
               />
               <TextField 
                 fullWidth 
@@ -440,7 +506,7 @@ const DashboardProducts = () => {
                 <Select 
                   label="Category" 
                   value={addForm.category} 
-                  onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                 >
                   {categories.map(cat => (
                     <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
@@ -456,6 +522,48 @@ const DashboardProducts = () => {
                 onChange={(e) => setAddForm({ ...addForm, stock: e.target.value })} 
               />
             </Box>
+
+            {/* Dynamic Attributes Section */}
+            {categoryDetailsLoading && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 1 }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" color="text.secondary">
+                  Loading category attributes...
+                </Typography>
+              </Box>
+            )}
+
+            {!categoryDetailsLoading && categoryAttributes.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'background.default' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, color: 'primary.main' }}>
+                  Category Dynamic Attributes (Specs)
+                </Typography>
+                <Grid container spacing={2}>
+                  {categoryAttributes.map((attr) => {
+                    const fieldLabel = attr.unit ? `${attr.attrKey} (${attr.unit})` : attr.attrKey;
+                    const isNumber = attr.datatype === 'NUMBER' || attr.datatype === 'NUMERIC';
+
+                    return (
+                      <Grid item xs={12} sm={6} key={attr.id || attr.attrKey}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label={fieldLabel}
+                          helperText={`Segment: ${attr.segmentName} | Type: ${attr.datatype}`}
+                          type={isNumber ? 'number' : 'text'}
+                          value={dynamicSpecs[attr.attrKey] || ''}
+                          onChange={(e) => setDynamicSpecs({
+                            ...dynamicSpecs,
+                            [attr.attrKey]: e.target.value
+                          })}
+                        />
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Paper>
+            )}
+
             <Box sx={{ display: 'flex', gap: 2 }}>
               <FormControl fullWidth>
                 <InputLabel>Pack Type</InputLabel>
@@ -525,7 +633,7 @@ const DashboardProducts = () => {
           <Button 
             onClick={handleAddProduct} 
             variant="contained"
-            disabled={isUploading}
+            disabled={isUploading || categoryDetailsLoading}
           >
             {isUploading ? 'Uploading...' : 'Save Product'}
           </Button>

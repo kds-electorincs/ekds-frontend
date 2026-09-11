@@ -14,6 +14,7 @@ export const PERMISSIONS = {
   VIEW_LOGS: 'view_logs',
   MANAGE_CONFIG: 'manage_config',
   MANAGE_MAINTENANCE: 'manage_maintenance',
+  MANAGE_DISCREPANCIES: 'manage_discrepancies',
 };
 
 export const ROLE_PERMISSIONS = {
@@ -34,6 +35,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.MANAGE_ORDERS,
     PERMISSIONS.UPDATE_ORDER_STATUS,
     PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.MANAGE_DISCREPANCIES,
   ],
   
   [ROLES.ORDER_MANAGER]: [

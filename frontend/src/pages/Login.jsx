@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, TextField, Button, Link, InputAdornment, IconButton, Alert, MenuItem } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Link, InputAdornment, IconButton, Alert, MenuItem, Divider } from '@mui/material';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -123,7 +124,17 @@ const Login = () => {
           </Button>
         </form>
 
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <Box sx={{ my: 3, display: 'flex', alignItems: 'center' }}>
+          <Divider sx={{ flex: 1 }} />
+          <Typography variant="caption" color="text.secondary" sx={{ px: 2, fontWeight: 600 }}>
+            OR
+          </Typography>
+          <Divider sx={{ flex: 1 }} />
+        </Box>
+
+        <GoogleLoginButton text="signin_with" />
+
+        <Box sx={{ textAlign: 'center', mt: 3 }}>
           <Typography variant="body2" color="text.secondary">
             Don't have an account?{' '}
             <Link 

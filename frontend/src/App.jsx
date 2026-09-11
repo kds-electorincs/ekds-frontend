@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+import AcceptInvitation from './pages/AcceptInvitation';
 import ProductListing from './pages/ProductListing';
 import ProductDetails from './pages/ProductDetails';
 import Cart from './pages/Cart';
@@ -42,6 +43,7 @@ import DashboardCatalogConfig from './pages/admin/DashboardCatalogConfig';
 import DashboardMaintenance from './pages/admin/DashboardMaintenance';
 import StaffManagement from './pages/admin/StaffManagement';
 import ActivityLogs from './pages/admin/ActivityLogs';
+import DashboardDiscrepancies from './pages/admin/DashboardDiscrepancies';
 
 // Security and Auth
 import { useAuth } from './context/AuthContext';
@@ -94,7 +96,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          
+          <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+
           {/* E-Commerce Cart, Checkout & Order/Payment Status */}
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
@@ -185,6 +188,12 @@ function App() {
           <Route path="staff" element={
             <PermissionRoute permission={PERMISSIONS.MANAGE_STAFF}>
               <StaffManagement />
+            </PermissionRoute>
+          } />
+
+          <Route path="discrepancies" element={
+            <PermissionRoute permission={PERMISSIONS.MANAGE_DISCREPANCIES}>
+              <DashboardDiscrepancies />
             </PermissionRoute>
           } />
 

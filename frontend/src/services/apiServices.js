@@ -8,9 +8,9 @@ export const authService = {
   register: async (userData) => await axiosInstance.post('/auth/register', userData),
   forgotPassword: async (email) => await axiosInstance.post('/auth/password-reset/request', { email }),
   requestPasswordReset: async (email) => await axiosInstance.post('/auth/password-reset/request', { email }),
-  resetPassword: async (token, newPassword) => await axiosInstance.post('/auth/password-reset/verify', { token, newPassword }),
-  verifyPasswordReset: async (token, newPassword) => await axiosInstance.post('/auth/password-reset/verify', { token, newPassword }),
-  googleLogin: async (data) => await axiosInstance.post('/auth/google', data),
+  resetPassword: async (data) => await axiosInstance.post('/auth/password-reset/verify', typeof data === 'string' ? JSON.parse(data) : data),
+  verifyPasswordReset: async (data) => await axiosInstance.post('/auth/password-reset/verify', data),
+  googleLogin: async (data) => await axiosInstance.post('/auth/google', typeof data === 'string' ? { idToken: data } : data),
   previewInvitation: async (token) => await axiosInstance.get(`/auth/invitations/${token}`),
   acceptInvitation: async (token, data) => await axiosInstance.post(`/auth/invitations/${token}/accept`, data),
   logout: async () => {
@@ -155,41 +155,23 @@ export const orderService = {
 // ==========================================
 // Admin Order Management Services (requires ORDERS page grant)
 // ==========================================
-// TODO(backend-missing): No AdminOrderController exists anywhere in the
-// backend — none of these routes exist yet (verified against
-// ekds-backend/kds-web/.../controller/*.java, only 23 controllers total,
-// no "Order" match besides the customer-facing OrderController).
-// Feature: pages/admin/DashboardOrders.jsx. All call sites there are
-// commented out and the page renders an empty state instead.
-// Suggested endpoints (from the checkout integration guide, unimplemented):
-//   GET  /api/admin/orders?paymentStatus=&fulfilmentStatus=&from=&to=&userId=&page=&size=
-//   GET  /api/admin/orders/{id}
-//   POST /api/admin/orders/{id}/status   body { status, note }
-//   POST /api/admin/orders/{id}/ship     body { courierName, awbNumber }
-// export const adminOrderService = {
-//   listOrders: async (params) => await axiosInstance.get('/admin/orders', { params }),
-//   getOrder: async (id) => await axiosInstance.get(`/admin/orders/${id}`),
-//   updateStatus: async (id, status, note) =>
-//     await axiosInstance.post(`/admin/orders/${id}/status`, { status, note }),
-//   shipOrder: async (id, courierName, awbNumber) =>
-//     await axiosInstance.post(`/admin/orders/${id}/ship`, { courierName, awbNumber }),
-// };
+export const adminOrderService = {
+  listOrders: async (params) => await axiosInstance.get('/admin/orders', { params }),
+  getOrder: async (id) => await axiosInstance.get(`/admin/orders/${id}`),
+  updateStatus: async (id, status, note) =>
+    await axiosInstance.post(`/admin/orders/${id}/status`, { status, note }),
+  shipOrder: async (id, courierName, awbNumber) =>
+    await axiosInstance.post(`/admin/orders/${id}/ship`, { courierName, awbNumber }),
+};
 
 // ==========================================
 // Admin Payment Reconciliation Services (requires FINANCE page grant)
 // ==========================================
-// TODO(backend-missing): No reconciliation/mismatches controller exists
-// anywhere in the backend. Feature: not yet built on the frontend at all
-// (no page/route references this) — annotated here for completeness only,
-// same as dashboardService below.
-// Suggested endpoints (from the checkout integration guide, unimplemented):
-//   GET  /api/admin/payments/mismatches?page=&size=
-//   POST /api/admin/payments/mismatches/{id}/resolve   body { resolutionNote }
-// export const adminPaymentService = {
-//   getMismatches: async (params) => await axiosInstance.get('/admin/payments/mismatches', { params }),
-//   resolveMismatch: async (id, resolutionNote) =>
-//     await axiosInstance.post(`/admin/payments/mismatches/${id}/resolve`, { resolutionNote }),
-// };
+export const adminPaymentService = {
+  getMismatches: async (params) => await axiosInstance.get('/admin/payments/mismatches', { params }),
+  resolveMismatch: async (id, resolutionNote) =>
+    await axiosInstance.post(`/admin/payments/mismatches/${id}/resolve`, { resolutionNote }),
+};
 
 
 // ==========================================
@@ -387,67 +369,25 @@ export const uploadAdminService = {
 // Admin Management (RBAC & Staff) Services
 // ==========================================
 export const adminManagementService = {
-  // Matches AdminUserController GET /api/admin/admin-management/admins.
+  // AdminUserController: GET /api/admin/admin-management/admins
   getAdmins: async (params) => await axiosInstance.get('/admin/admin-management/admins', { params }),
+  getAdmin: async (userId) => await axiosInstance.get(`/admin/admin-management/admins/${userId}`),
+  promoteUser: async (userId) => await axiosInstance.post(`/admin/admin-management/admins/${userId}/promote`),
+  demoteUser: async (userId) => await axiosInstance.post(`/admin/admin-management/admins/${userId}/demote`),
+  assignRole: async (userId, roleId) => await axiosInstance.post(`/admin/admin-management/admins/${userId}/roles/${roleId}`),
+  revokeRole: async (userId, roleId) => await axiosInstance.delete(`/admin/admin-management/admins/${userId}/roles/${roleId}`),
 
-  // TODO(backend-missing): No backend endpoint for
-  // POST /admin/admin-management/promote?userId=. Not called from any live
-  // component today.
-  // NEEDS MANUAL REVIEW: AdminUserController exposes
-  // POST /api/admin/admin-management/admins/{userId}/promote (path param,
-  // not query param) which looks like the intended match — not swapped in
-  // automatically per audit scope.
-  promoteUser: async (userId) => await axiosInstance.post('/admin/admin-management/promote', null, { params: { userId } }),
-
-  // TODO(backend-missing): No backend endpoint for
-  // POST /admin/admin-management/demote?userId=. See commented-out call site
-  // in pages/admin/StaffManagement.jsx.
-  // NEEDS MANUAL REVIEW: AdminUserController exposes
-  // POST /api/admin/admin-management/admins/{userId}/demote (path param).
-  demoteUser: async (userId) => await axiosInstance.post('/admin/admin-management/demote', null, { params: { userId } }),
-
-  // Matches AdminRoleController GET /api/admin/admin-management/roles
-  // (lists role *definitions*, not called from any live component today).
+  // AdminRoleController: /api/admin/admin-management/roles
   getRoles: async () => await axiosInstance.get('/admin/admin-management/roles'),
+  createRole: async (roleData) => await axiosInstance.post('/admin/admin-management/roles', roleData),
+  updateRole: async (id, roleData) => await axiosInstance.patch(`/admin/admin-management/roles/${id}`, roleData),
+  deleteRole: async (id) => await axiosInstance.delete(`/admin/admin-management/roles/${id}`),
 
-  // TODO(backend-missing): No backend endpoint for
-  // POST /admin/admin-management/roles/assign?userId=&role=. See
-  // commented-out call site in pages/admin/StaffManagement.jsx.
-  // NEEDS MANUAL REVIEW: AdminUserController exposes
-  // POST /api/admin/admin-management/admins/{userId}/roles/{roleId} (path
-  // params, roleId not a role-name string) which looks like the intended
-  // match — not swapped in automatically per audit scope.
-  assignRole: async (userId, role) => await axiosInstance.post('/admin/admin-management/roles/assign', null, { params: { userId, role } }),
-
-  // TODO(backend-missing): No backend endpoint for
-  // DELETE /admin/admin-management/roles/revoke?userId=&role=. Not called
-  // from any live component today.
-  // NEEDS MANUAL REVIEW: AdminUserController exposes
-  // DELETE /api/admin/admin-management/admins/{userId}/roles/{roleId}
-  // (path params) which looks like the intended match.
-  revokeRole: async (userId, role) => await axiosInstance.delete('/admin/admin-management/roles/revoke', { params: { userId, role } }),
-
-  // Matches AdminInvitationController GET /api/admin/admin-management/invitations.
+  // AdminInvitationController: /api/admin/admin-management/invitations
   getInvitations: async (params) => await axiosInstance.get('/admin/admin-management/invitations', { params }),
-
-  // Matches AdminInvitationController POST /api/admin/admin-management/invitations.
   createInvitation: async (data) => await axiosInstance.post('/admin/admin-management/invitations', data),
-
-  // TODO(backend-missing): No backend endpoint for
-  // DELETE /admin/admin-management/invitations?invitationId=. Not called
-  // from any live component today.
-  // NEEDS MANUAL REVIEW: AdminInvitationController exposes
-  // DELETE /api/admin/admin-management/invitations/{id} (path param, not
-  // query param) which looks like the intended match.
-  cancelInvitation: async (invitationId) => await axiosInstance.delete('/admin/admin-management/invitations', { params: { invitationId } }),
-
-  // TODO(backend-missing): No backend endpoint for
-  // POST /admin/admin-management/invitations/resend?invitationId=. Not
-  // called from any live component today.
-  // NEEDS MANUAL REVIEW: AdminInvitationController exposes
-  // POST /api/admin/admin-management/invitations/{id}/resend (path param)
-  // which looks like the intended match.
-  resendInvitation: async (invitationId) => await axiosInstance.post('/admin/admin-management/invitations/resend', null, { params: { invitationId } }),
+  cancelInvitation: async (invitationId) => await axiosInstance.delete(`/admin/admin-management/invitations/${invitationId}`),
+  resendInvitation: async (invitationId) => await axiosInstance.post(`/admin/admin-management/invitations/${invitationId}/resend`),
 };
 
 // ==========================================

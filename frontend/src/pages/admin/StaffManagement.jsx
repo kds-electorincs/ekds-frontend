@@ -42,27 +42,45 @@ const StaffManagement = () => {
   const [editStaff, setEditStaff] = useState(null);
   const theme = useTheme();
 
+  const [rolesList, setRolesList] = useState([]);
+  const [invitations, setInvitations] = useState([]);
+
   const fetchAdmins = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminManagementService.getAdmins();
-      const adminData = response.data?.content || response.content || response.data || response;
-      if (Array.isArray(adminData) && adminData.length > 0) {
-        setStaff(adminData.map((a, idx) => ({
-          id: a.id || idx + 1,
-          name: a.name || a.username || 'Admin User',
-          email: a.email || 'N/A',
-          role: a.role || ROLES.SUPPORT_STAFF,
-          status: a.active || a.status ? 'Active' : 'Inactive',
-        })));
-      } else {
-        setStaff([]);
+      const [adminRes, roleRes, inviteRes] = await Promise.allSettled([
+        adminManagementService.getAdmins(),
+        adminManagementService.getRoles(),
+        adminManagementService.getInvitations()
+      ]);
+
+      if (adminRes.status === 'fulfilled') {
+        const adminData = adminRes.value.data?.content || adminRes.value.content || adminRes.value.data || adminRes.value;
+        if (Array.isArray(adminData)) {
+          setStaff(adminData.map((a) => ({
+            id: a.userId || a.id,
+            name: a.fullName || a.name || a.email || 'Admin User',
+            email: a.email || 'N/A',
+            role: a.roles?.[0]?.name || a.role || 'ROLE_ADMIN',
+            roles: a.roles || [],
+            status: a.enabled !== false ? 'Active' : 'Inactive',
+          })));
+        }
+      }
+
+      if (roleRes.status === 'fulfilled') {
+        const rData = roleRes.value.data || roleRes.value;
+        if (Array.isArray(rData)) setRolesList(rData);
+      }
+
+      if (inviteRes.status === 'fulfilled') {
+        const iData = inviteRes.value.data || inviteRes.value;
+        if (Array.isArray(iData)) setInvitations(iData);
       }
     } catch (err) {
       console.error('Failed to load admin dataset from backend:', err);
       setError('Unable to reach authentication server or retrieve admin staff records.');
-      setStaff([]);
     } finally {
       setLoading(false);
     }
@@ -73,7 +91,7 @@ const StaffManagement = () => {
   }, []);
 
   const handleOpen = (item = null) => {
-    setEditStaff(item || { name: '', email: '', role: ROLES.SUPPORT_STAFF, status: 'Active' });
+    setEditStaff(item || { name: '', email: '', roleId: rolesList[0]?.id || 1, status: 'Active' });
     setOpen(true);
   };
 
@@ -85,56 +103,63 @@ const StaffManagement = () => {
   const handleSave = async () => {
     try {
       if (editStaff.id) {
-        // TODO(backend-missing): No backend endpoint for
-        // POST /admin/admin-management/roles/assign?userId=&role=.
-        // Feature: Staff Management "edit role" action. Commented out until
-        // backend implements this exact contract.
-        // Suggested endpoint: POST /api/admin/admin-management/roles/assign
-        // NEEDS MANUAL REVIEW: AdminUserController exposes
-        // POST /api/admin/admin-management/admins/{userId}/roles/{roleId}
-        // (path params, and roleId not a role name string) which looks like
-        // the intended backend for this action, but the shape doesn't match
-        // this call — not swapped in automatically per audit scope.
-        // Stub: role assignment is skipped; local table state still updates
-        // optimistically so the modal flow doesn't break.
-        // await adminManagementService.assignRole(editStaff.id, editStaff.role);
+        if (editStaff.roleId) {
+          let targetRoleId = editStaff.roleId;
+          // If roleId is a string role name (e.g. 'SUPER_ADMIN'), match it in rolesList
+          if (typeof targetRoleId === 'string' && isNaN(Number(targetRoleId))) {
+            const matched = rolesList.find(r => r.name === targetRoleId || r.name === `ROLE_${targetRoleId}`);
+            if (matched) targetRoleId = matched.id;
+          }
+          await adminManagementService.assignRole(editStaff.id, Number(targetRoleId) || 1);
+        }
         toast.success('Staff role assignment updated successfully.');
-        setStaff(staff.map(s => s.id === editStaff.id ? editStaff : s));
+        fetchAdmins();
       } else {
-        await adminManagementService.createInvitation({ email: editStaff.email, role: editStaff.role });
+        const roleIds = editStaff.roleId ? [Number(editStaff.roleId)] : [];
+        await adminManagementService.createInvitation({ email: editStaff.email, roleIds });
         toast.success(`Official invitation email dispatched to ${editStaff.email}`);
         fetchAdmins();
       }
     } catch (err) {
       console.error('Backend request failed:', err);
-      toast.error(err?.response?.data?.message || 'Failed to save staff member to live server.');
+      toast.error(err?.response?.data?.detail || err?.response?.data?.message || 'Failed to save staff member.');
     } finally {
       handleClose();
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to revoke staff privileges and remove this member?')) {
+    if (window.confirm('Are you sure you want to demote staff member and revoke access?')) {
       try {
-        // TODO(backend-missing): No backend endpoint for
-        // POST /admin/admin-management/demote?userId=.
-        // Feature: Staff Management "revoke access" action. Commented out
-        // until backend implements this exact contract.
-        // Suggested endpoint: POST /api/admin/admin-management/demote
-        // NEEDS MANUAL REVIEW: AdminUserController exposes
-        // POST /api/admin/admin-management/admins/{userId}/demote (path
-        // param, not a query param) which looks like the intended backend
-        // for this action, but the URL shape doesn't match this call — not
-        // swapped in automatically per audit scope.
-        // Stub: demotion is skipped; local table state still updates
-        // optimistically so the UI flow doesn't break.
-        // await adminManagementService.demoteUser(id);
+        await adminManagementService.demoteUser(id);
         toast.success('Staff access revoked successfully.');
-        setStaff(staff.filter(s => s.id !== id));
+        fetchAdmins();
       } catch (err) {
         console.error('Demote failed:', err);
-        toast.error('Failed to revoke access on live server.');
+        toast.error(err?.response?.data?.detail || 'Failed to revoke access on live server.');
       }
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId) => {
+    if (window.confirm('Are you sure you want to cancel this pending invitation?')) {
+      try {
+        await adminManagementService.cancelInvitation(invitationId);
+        toast.success('Invitation cancelled.');
+        fetchAdmins();
+      } catch (err) {
+        toast.error('Failed to cancel invitation.');
+      }
+    }
+  };
+
+  const handleResendInvitation = async (invitationId) => {
+    try {
+      await adminManagementService.resendInvitation(invitationId);
+      toast.success('Invitation email resent successfully.');
+      fetchAdmins();
+    } catch (err) {
+      toast.error('Failed to resend invitation.');
     }
   };
 
@@ -292,14 +317,20 @@ const StaffManagement = () => {
               select
               label="RBAC Access Role"
               fullWidth
-              value={editStaff?.role || ROLES.SUPPORT_STAFF}
-              onChange={(e) => setEditStaff({ ...editStaff, role: e.target.value })}
+              value={editStaff?.roleId || editStaff?.role || (rolesList[0]?.id || ROLES.SUPPORT_STAFF)}
+              onChange={(e) => setEditStaff({ ...editStaff, roleId: e.target.value })}
             >
-              {Object.values(ROLES).map((role) => (
-                <MenuItem key={role} value={role} sx={{ fontWeight: 500 }}>
-                  {role.replace('_', ' ')}
-                </MenuItem>
-              ))}
+              {rolesList.length > 0
+                ? rolesList.map((r) => (
+                    <MenuItem key={r.id} value={r.id} sx={{ fontWeight: 500 }}>
+                      {r.name} - {r.description || r.code || ''}
+                    </MenuItem>
+                  ))
+                : Object.values(ROLES).map((role) => (
+                    <MenuItem key={role} value={role} sx={{ fontWeight: 500 }}>
+                      {role.replace('_', ' ')}
+                    </MenuItem>
+                  ))}
             </TextField>
             {editStaff?.id && (
               <TextField

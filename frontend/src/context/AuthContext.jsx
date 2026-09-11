@@ -174,8 +174,48 @@ export const AuthProvider = ({ children }) => {
     return user?.role === role;
   };
 
+  const loginWithGoogle = async (idToken) => {
+    try {
+      const response = await axiosClient.post('/auth/google', { idToken });
+      setAccessToken(response.accessToken);
+      let userData = response.user;
+      if (!userData) {
+        const profileResponse = await axiosClient.get('/users/me', {
+          headers: { Authorization: `Bearer ${response.accessToken}` }
+        });
+        userData = profileResponse.data || profileResponse;
+      }
+
+      // Normalize backend roles array to frontend role string
+      if (userData && Array.isArray(userData.roles) && userData.roles.length > 0) {
+        let primaryRole = userData.roles[0];
+        if (typeof primaryRole === 'object' && primaryRole.name) {
+          primaryRole = primaryRole.name;
+        }
+        if (typeof primaryRole === 'string' && primaryRole.startsWith('ROLE_')) {
+          primaryRole = primaryRole.substring(5); // Strip 'ROLE_'
+        }
+        userData.role = primaryRole || 'CUSTOMER';
+      } else if (userData && !userData.role) {
+        userData.role = 'CUSTOMER';
+      }
+
+      setUser(userData);
+      sessionStorage.setItem('token', response.accessToken);
+      if (response.refreshToken) {
+        sessionStorage.setItem('refreshToken', response.refreshToken);
+      }
+      sessionStorage.setItem('user', JSON.stringify(userData));
+      toast.success(`Welcome, ${userData?.name || userData?.fullName || 'User'}`);
+      return userData;
+    } catch (error) {
+      console.error('Google login failed:', error.message);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshProfile, hasPermission, hasRole, accessToken }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, refreshProfile, hasPermission, hasRole, accessToken }}>
       {!loading && children}
     </AuthContext.Provider>
   );

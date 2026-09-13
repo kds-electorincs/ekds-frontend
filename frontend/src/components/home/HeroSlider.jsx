@@ -8,6 +8,10 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import heroSemiconductor from '../../assets/hero_semiconductor.webp';
+import heroBom from '../../assets/hero_bom.webp';
+import heroIso from '../../assets/hero_iso.webp';
+
 const SLIDES = [
   {
     id: 1,
@@ -21,7 +25,7 @@ const SLIDES = [
     bgColor: '#16243C',
     gradient: 'linear-gradient(135deg, #16243C 0%, #243A5E 50%, #0F172A 100%)',
     accentColor: '#8FB6D8',
-    image: 'https://d1sswqar085ync.cloudfront.net/assets/hero_semiconductor.png'
+    image: heroSemiconductor
   },
   {
     id: 2,
@@ -35,7 +39,7 @@ const SLIDES = [
     bgColor: '#0F172A',
     gradient: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #090D16 100%)',
     accentColor: '#38BDF8',
-    image: 'https://d1sswqar085ync.cloudfront.net/assets/hero_bom.png'
+    image: heroBom
   },
   {
     id: 3,
@@ -49,7 +53,7 @@ const SLIDES = [
     bgColor: '#1E1B4B',
     gradient: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #0F172A 100%)',
     accentColor: '#A78BFA',
-    image: 'https://d1sswqar085ync.cloudfront.net/assets/hero_iso.png'
+    image: heroIso
   }
 ];
 

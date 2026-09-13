@@ -197,18 +197,13 @@ const Navbar = () => {
                 <MenuIcon />
               </IconButton>
             )}
-            <Box component={RouterLink} to="/" sx={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ bgcolor: 'primary.main', color: 'white', px: 1.2, py: 0.3, borderRadius: 1, fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.05em' }}>
-                  KDS
-                </Box>
-                <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', letterSpacing: '-0.03em', display: { xs: 'none', sm: 'block' } }}>
-                  ELECTRONICS
-                </Typography>
-              </Box>
-              <Typography variant="caption" sx={{ fontSize: '0.625rem', color: 'text.secondary', fontWeight: 700, letterSpacing: '0.08em', mt: -0.2 }}>
-                INDUSTRIAL PROCUREMENT
-              </Typography>
+            <Box component={RouterLink} to="/" sx={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+              <Box
+                component="img"
+                src="/logo.svg"
+                alt="KDS Electronics Logo"
+                sx={{ height: 42, width: 'auto', objectFit: 'contain' }}
+              />
             </Box>
           </Box>
 
@@ -550,9 +545,9 @@ const Navbar = () => {
             <RouterLink to="/products" style={{ color: 'white', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600 }}>
               All Electronic Parts
             </RouterLink>
-            <RouterLink to="/products?filter=in-stock" style={{ color: 'white', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600 }}>
+            {/* <RouterLink to="/products?filter=in-stock" style={{ color: 'white', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600 }}>
               🟢 Ready to Ship (In Stock)
-            </RouterLink>
+            </RouterLink> */}
             <RouterLink to={user ? "/user/quotations" : "/login"} style={{ color: '#8FB6D8', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 700 }}>
               📋 Request Bulk B2B Quote
             </RouterLink>

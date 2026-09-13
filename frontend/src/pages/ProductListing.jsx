@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Grid, Typography, Box, Breadcrumbs, IconButton, Drawer, CircularProgress, 
   Paper, InputBase, Checkbox, FormControlLabel, FormGroup, Button, Divider, 
-  Chip, MenuItem, Select, FormControl, InputLabel
+  Chip, MenuItem, Select, FormControl, InputLabel, Container
 } from '@mui/material';
 import { 
   FilterList as FilterListIcon,
@@ -12,6 +12,7 @@ import {
   NavigateNext as NavigateNextIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useSearchParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from '../components/ProductCard';
 import { productPublicService, categoryPublicService, searchService } from '../services/apiServices';
 import SkeletonLoader from '../components/common/SkeletonLoader';
@@ -300,7 +301,7 @@ const ProductListing = () => {
   );
 
   return (
-    <Box sx={{ pb: 8 }}>
+    <Container maxWidth="lg" sx={{ pb: 8, pt: 2 }}>
       {/* Top Navigation Breadcrumbs */}
       <Box sx={{ py: 2, borderBottom: '1px solid #D6E4EE', mb: 3 }}>
         <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
@@ -384,7 +385,7 @@ const ProductListing = () => {
         
         {/* Left Parametric Column (Desktop) */}
         <Grid size={{ xs: 12, md: 3.2 }} sx={{ display: { xs: 'none', md: 'block' } }}>
-          <Box sx={{ position: 'sticky', top: 120 }}>
+          <Box sx={{ position: 'sticky', top: 160 }}>
             {filterPanel}
           </Box>
         </Grid>
@@ -402,21 +403,9 @@ const ProductListing = () => {
             />
           ) : totalResults > 0 ? (
             <Box>
-              {/* High-Density Industrial Table / List View */}
-              <Paper elevation={0} sx={{ border: '1px solid #D6E4EE', borderRadius: 1, overflow: 'hidden' }}>
-                {/* Table Header Row */}
-                <Box sx={{ display: { xs: 'none', md: 'grid' }, gridTemplateColumns: '120px 2.5fr 1.5fr 1.5fr 1.8fr 180px', gap: 2, px: 2, py: 1.2, bgcolor: '#EDF4FA', borderBottom: '2px solid #243A5E', fontWeight: 800, fontSize: '0.75rem', color: 'primary.main', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <Box>Part Image</Box>
-                  <Box>Part Number / Description</Box>
-                  <Box>Stock Availability</Box>
-                  <Box>Unit / Tier Price</Box>
-                  <Box>Compliance & Series</Box>
-                  <Box sx={{ textAlign: 'right' }}>Procurement Action</Box>
-                </Box>
-                {filteredAndSortedProducts.map((product, idx) => (
-                  <ProductCard key={product.id || product._id || idx} product={product} viewMode="list" />
-                ))}
-              </Paper>
+              {filteredAndSortedProducts.map((product, idx) => (
+                <ProductCard key={product.id || product._id || idx} product={product} viewMode="list" />
+              ))}
             </Box>
           ) : (
             <EmptyState
@@ -438,7 +427,7 @@ const ProductListing = () => {
         </Box>
         {filterPanel}
       </Drawer>
-    </Box>
+    </Container>
   );
 };
 

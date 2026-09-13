@@ -168,7 +168,10 @@ export const adminOrderService = {
 // Admin Payment Reconciliation Services (requires FINANCE page grant)
 // ==========================================
 export const adminPaymentService = {
-  getMismatches: async (params) => await axiosInstance.get('/admin/payments/mismatches', { params }),
+  getMismatches: async (page = 0, size = 20) => {
+    const params = typeof page === 'object' ? page : { page, size };
+    return await axiosInstance.get('/admin/payments/mismatches', { params });
+  },
   resolveMismatch: async (id, resolutionNote) =>
     await axiosInstance.post(`/admin/payments/mismatches/${id}/resolve`, { resolutionNote }),
 };
@@ -399,4 +402,7 @@ export const searchService = {
   searchCategory: async (slug, params) => await axiosInstance.get(`/search/categories/${slug}`, { params }),
   getCategoryFacets: async (slug, params) => await axiosInstance.get(`/search/categories/${slug}/facets`, { params }),
 };
+
+
+
 

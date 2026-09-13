@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Stepper, Step, StepLabel, Button,
   Divider, Alert, Chip, TextField, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemText, RadioGroup, FormControlLabel,
-  Radio, CircularProgress
+  Radio, CircularProgress, Container
 } from '@mui/material';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
@@ -316,7 +316,7 @@ const Checkout = () => {
   };
 
   return (
-    <Box sx={{ py: 4, pb: 12, maxWidth: 960, mx: 'auto' }}>
+    <Container maxWidth="lg" sx={{ py: 4, pb: 12 }}>
       <Box sx={{ mb: 4, borderBottom: '2px solid #243A5E', pb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main' }}>
           Corporate Procurement Authorization
@@ -476,7 +476,7 @@ const Checkout = () => {
           )}
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

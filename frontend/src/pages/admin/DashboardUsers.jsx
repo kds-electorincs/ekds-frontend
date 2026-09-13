@@ -15,6 +15,9 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../context/AuthContext';
+import { ROLES } from '../../constants/roles';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const initialUsers = [];
 const initialPendingB2B = [];
@@ -39,6 +42,9 @@ const getRoleColor = (role) => {
 };
 
 const DashboardUsers = () => {
+  const { user, hasPermission } = useAuth();
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN || hasPermission(PERMISSIONS.MANAGE_STAFF);
+
   const [users, setUsers] = useState(initialUsers);
   const [pendingB2B, setPendingB2B] = useState(initialPendingB2B);
   
@@ -171,26 +177,28 @@ const DashboardUsers = () => {
             Manage roles, permissions, accounts, and B2B corporate verification queues.
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="outlined" 
-            color="secondary" 
-            startIcon={<SecurityIcon />}
-            sx={{ borderRadius: 2, textTransform: 'none', px: 3, py: 1 }}
-            onClick={() => setOpenRolesModal(true)}
-          >
-            Manage Roles
-          </Button>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            startIcon={<AddIcon />}
-            sx={{ borderRadius: 2, textTransform: 'none', px: 3, py: 1 }}
-            onClick={() => setOpenAddModal(true)}
-          >
-            Add User
-          </Button>
-        </Box>
+        {isSuperAdmin && (
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="secondary" 
+              startIcon={<SecurityIcon />}
+              sx={{ borderRadius: 2, textTransform: 'none', px: 3, py: 1 }}
+              onClick={() => setOpenRolesModal(true)}
+            >
+              Manage Roles
+            </Button>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              startIcon={<AddIcon />}
+              sx={{ borderRadius: 2, textTransform: 'none', px: 3, py: 1 }}
+              onClick={() => setOpenAddModal(true)}
+            >
+              Add User
+            </Button>
+          </Box>
+        )}
       </Box>
 
       <Paper sx={{ borderRadius: 4, boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -281,21 +289,27 @@ const DashboardUsers = () => {
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary' }}>{row.joined}</TableCell>
                     <TableCell align="right">
-                      <Tooltip title="Manage Permissions">
-                        <IconButton size="small" color="secondary" sx={{ mr: 1 }} onClick={() => handlePermissionsClick(row)}>
-                          <ManageAccountsIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit User">
-                        <IconButton size="small" color="primary" sx={{ mr: 1 }} onClick={() => handleEditClick(row)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete User">
-                        <IconButton size="small" color="error" onClick={() => handleDeleteUser(row)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {isSuperAdmin ? (
+                        <>
+                          <Tooltip title="Manage Permissions">
+                            <IconButton size="small" color="secondary" sx={{ mr: 1 }} onClick={() => handlePermissionsClick(row)}>
+                              <ManageAccountsIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit User">
+                            <IconButton size="small" color="primary" sx={{ mr: 1 }} onClick={() => handleEditClick(row)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete User">
+                            <IconButton size="small" color="error" onClick={() => handleDeleteUser(row)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">View only</Typography>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -15,7 +15,8 @@ import {
 } from '@mui/icons-material';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import Navbar from '../../components/Navbar';
+import Header from '../../components/common/Header';
+import Footer from '../../components/common/Footer';
 
 const UserDashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -169,7 +170,7 @@ const UserDashboardLayout = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
       
       {/* 1. Global Storefront Header */}
-      <Navbar />
+      <Header />
 
       {/* 2. Mobile Dashboard Menu Trigger Strip */}
       {isMobile && (
@@ -261,6 +262,7 @@ const UserDashboardLayout = () => {
         </Drawer>
       )}
 
+      <Footer />
     </Box>
   );
 };

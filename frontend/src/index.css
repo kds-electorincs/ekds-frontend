@@ -1,92 +1,285 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════
+   KDS ELECTRONICS — PREMIUM DESIGN SYSTEM
+   ═══════════════════════════════════════════ */
+
 :root {
+  /* Brand Colors */
+  --kds-primary: #243A5E;
+  --kds-primary-dark: #16243C;
+  --kds-primary-light: #5F86A6;
+  --kds-secondary: #8FB6D8;
+  --kds-secondary-light: #CFE3F1;
+  --kds-accent: #38BDF8;
+  --kds-bg: #F6F9FC;
+  --kds-surface: #ffffff;
+
+  /* Premium Gradients */
+  --gradient-primary: linear-gradient(135deg, #243A5E 0%, #16243C 100%);
+  --gradient-dark: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #111B2C 100%);
+  --gradient-hero: linear-gradient(135deg, #16243C 0%, #243A5E 40%, #1A2F4E 100%);
+  --gradient-accent: linear-gradient(135deg, #8FB6D8 0%, #5F86A6 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  --gradient-shimmer: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+
+  /* Premium Shadows */
+  --shadow-xs: 0 1px 2px rgba(22, 36, 60, 0.04);
+  --shadow-sm: 0 2px 4px rgba(22, 36, 60, 0.06);
+  --shadow-md: 0 4px 12px rgba(22, 36, 60, 0.08);
+  --shadow-lg: 0 12px 28px rgba(22, 36, 60, 0.12);
+  --shadow-xl: 0 20px 40px rgba(22, 36, 60, 0.16);
+  --shadow-glow: 0 0 20px rgba(143, 182, 216, 0.3);
+  --shadow-card-hover: 0 16px 32px -4px rgba(36, 58, 94, 0.14), 0 6px 14px -3px rgba(36, 58, 94, 0.06);
+
+  /* Animation Timing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Typography */
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light;
-  background-color: #EDF4FA; /* Cloud Blue */
+  background-color: var(--kds-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
-/* Custom React Toastify Premium Styles */
+/* ── Selection ── */
+::selection {
+  background: rgba(143, 182, 216, 0.3);
+  color: #16243C;
+}
+
+/* ═══════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(143, 182, 216, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(143, 182, 216, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════ */
+
+.animate-fade-in { animation: fadeIn 0.6s var(--ease-out-expo) forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.6s var(--ease-out-expo) forwards; }
+.animate-fade-in-down { animation: fadeInDown 0.5s var(--ease-out-expo) forwards; }
+.animate-slide-left { animation: slideInLeft 0.6s var(--ease-out-expo) forwards; }
+.animate-slide-right { animation: slideInRight 0.6s var(--ease-out-expo) forwards; }
+.animate-scale-in { animation: scaleIn 0.5s var(--ease-spring) forwards; }
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-shimmer {
+  background: var(--gradient-shimmer);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* Glass morphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.glass-dark {
+  background: rgba(22, 36, 60, 0.85);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Premium hover lift */
+.hover-lift {
+  transition: transform 0.3s var(--ease-out-expo), box-shadow 0.3s var(--ease-out-expo);
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ═══════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F0F4F8;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4D5E3;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8FB6D8;
+}
+
+/* ═══════════════════════════════════════════
+   REACT TOASTIFY — PREMIUM STYLES
+   ═══════════════════════════════════════════ */
+
 .Toastify__toast-container {
   padding: 0;
   width: auto;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .Toastify__toast {
   border-radius: 16px !important;
-  padding: 12px 16px !important;
-  margin-bottom: 16px !important;
-  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15), 0 4px 12px -5px rgba(0,0,0,0.08) !important;
+  padding: 14px 18px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 12px 40px -10px rgba(0,0,0,0.15), 0 4px 16px -5px rgba(0,0,0,0.08) !important;
   font-family: 'Inter', sans-serif !important;
-  backdrop-filter: blur(12px) !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  color: #243A5E !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  color: #16243C !important;
 }
 
 .Toastify__toast--info {
-  border-left: 4px solid #243A5E !important;
+  border-left: 4px solid #3B82F6 !important;
 }
 
 .Toastify__toast--success {
-  border-left: 4px solid #4caf50 !important;
+  border-left: 4px solid #10B981 !important;
 }
 
 .Toastify__toast--warning {
-  border-left: 4px solid #ff9800 !important;
+  border-left: 4px solid #F59E0B !important;
 }
 
 .Toastify__toast--error {
-  border-left: 4px solid #f44336 !important;
+  border-left: 4px solid #EF4444 !important;
 }
 
 .Toastify__toast-body {
   font-weight: 600 !important;
-  font-size: 0.95rem !important;
-  padding: 0 8px !important;
+  font-size: 0.9rem !important;
+  padding: 0 10px !important;
   margin: 0 !important;
+  line-height: 1.4 !important;
 }
 
 .Toastify__toast-icon {
-  width: 24px !important;
-  height: 24px !important;
+  width: 22px !important;
+  height: 22px !important;
 }
 
 .Toastify__close-button {
   color: #5F86A6 !important;
-  opacity: 0.5 !important;
+  opacity: 0.4 !important;
   transition: all 0.2s ease !important;
   align-self: center !important;
 }
 
 .Toastify__close-button:hover {
-  color: #243A5E !important;
+  color: #16243C !important;
   opacity: 1 !important;
 }
 
 .Toastify__progress-bar {
-  height: 4px !important;
+  height: 3px !important;
   bottom: 0 !important;
   border-radius: 0 0 16px 16px !important;
 }
 
 .Toastify__progress-bar--info {
-  background: linear-gradient(90deg, #8FB6D8, #243A5E) !important;
+  background: linear-gradient(90deg, #8FB6D8, #3B82F6) !important;
 }
 
 .Toastify__progress-bar--success {
-  background: linear-gradient(90deg, #81c784, #4caf50) !important;
+  background: linear-gradient(90deg, #6EE7B7, #10B981) !important;
 }
 
 .Toastify__progress-bar--error {
-  background: linear-gradient(90deg, #e57373, #f44336) !important;
+  background: linear-gradient(90deg, #FCA5A5, #EF4444) !important;
+}
+
+.Toastify__progress-bar--warning {
+  background: linear-gradient(90deg, #FCD34D, #F59E0B) !important;
 }

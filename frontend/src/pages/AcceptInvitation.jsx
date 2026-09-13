@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, CircularProgress, Alert, Grid } from '@mui/material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Box, Paper, Typography, TextField, Button, CircularProgress, Alert, Grid, InputAdornment, IconButton } from '@mui/material';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authService } from '../services/apiServices';
 import notification from '../utils/notification';
 
 const AcceptInvitation = () => {
-  const { token } = useParams();
+  const { token: pathToken } = useParams();
+  const [searchParams] = useSearchParams();
+  const token = pathToken || searchParams.get('token');
   const navigate = useNavigate();
   const [invitation, setInvitation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -18,6 +23,9 @@ const AcceptInvitation = () => {
     password: '',
     confirmPassword: ''
   });
+
+  // Real-time password match check
+  const passwordMismatch = formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword;
 
   useEffect(() => {
     const fetchInvitation = async () => {
@@ -111,6 +119,7 @@ const AcceptInvitation = () => {
               <TextField
                 fullWidth
                 label="Phone Number"
+                placeholder="+919999999999"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -118,21 +127,45 @@ const AcceptInvitation = () => {
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 label="Password"
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }
+                }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 label="Confirm Password"
                 required
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                error={passwordMismatch}
+                helperText={passwordMismatch ? 'Passwords do not match' : ''}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end" size="small">
+                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }
+                }}
               />
             </Grid>
           </Grid>
@@ -142,7 +175,7 @@ const AcceptInvitation = () => {
             fullWidth
             variant="contained"
             size="large"
-            disabled={submitting}
+            disabled={submitting || passwordMismatch}
             sx={{ mt: 4, py: 1.5, borderRadius: 2, fontWeight: 700 }}
           >
             {submitting ? 'Setting up Account...' : 'Complete Account Setup'}
@@ -154,3 +187,4 @@ const AcceptInvitation = () => {
 };
 
 export default AcceptInvitation;
+

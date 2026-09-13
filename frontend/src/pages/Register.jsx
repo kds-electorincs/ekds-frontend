@@ -7,6 +7,7 @@ import * as yup from 'yup';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import notification from '../utils/notification';
 import { authService } from '../services/apiServices';
+import BrandLogo from '../components/common/BrandLogo';
 
 const schema = yup.object({
   fullName: yup.string().required('Full Name is required'),
@@ -64,14 +65,15 @@ const Register = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-      <Paper elevation={0} sx={{ p: 4, width: '100%', maxWidth: 600, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
+      <Paper elevation={0} sx={{ p: 4, width: '100%', maxWidth: 600, borderRadius: 3, border: '1px solid #E2ECF5', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main', mb: 1 }}>
-            Create Account
+          <BrandLogo sx={{ mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', mb: 0.5 }}>
+            Create Your Account
           </Typography>
-          <Typography color="text.secondary">
-            Join Archana to streamline your business operations
+          <Typography variant="body2" color="text.secondary">
+            Join KDS Electronics to unlock B2B pricing &amp; express ordering
           </Typography>
         </Box>
 

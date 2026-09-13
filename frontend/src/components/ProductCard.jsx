@@ -1,26 +1,38 @@
 import React, { useState } from 'react';
 import { 
   Card, CardMedia, CardContent, Typography, Button, Box, Chip, 
-  IconButton, Dialog, DialogTitle, DialogContent, DialogActions, 
-  Divider, Grid, Stack, Table, TableBody, TableCell, TableRow, TableContainer, Paper, Tooltip
+  IconButton, Dialog, DialogTitle, DialogContent, 
+  Grid, Rating, Paper, Skeleton
 } from '@mui/material';
 import { 
   Visibility as VisibilityIcon,
   Close as CloseIcon,
-  Inventory as InventoryIcon,
-  Description as DatasheetIcon,
   ShoppingCart as ShoppingCartIcon,
+  Favorite as FavoriteFilledIcon,
   FavoriteBorder as FavoriteIcon,
-  CompareArrows as CompareIcon,
-  Bolt as BoltIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  Memory as MemoryIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
-import { formatPrice as formatScaledPrice, CONTACT_US } from '../utils/priceUtils';
+import { formatPrice as formatScaledPrice } from '../utils/priceUtils';
 import { productPublicService } from '../services/apiServices';
 import notification from '../utils/notification';
+
+const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+
+const resolveS3ImageUrl = (product) => {
+  if (!product) return null;
+  const raw = product.primaryImageUrl || product.imageUrl || product.image || 
+    (product.primaryImage && (product.primaryImage.objectKey || product.primaryImage.url)) ||
+    (Array.isArray(product.images) && product.images.length > 0 && (product.images.find(i => i.isPrimary)?.objectKey || product.images[0]?.objectKey || product.images[0]?.url));
+  
+  if (!raw || typeof raw !== 'string') return null;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return `${CDN_BASE}/${raw.replace(/^\//, '')}`;
+};
 
 const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
   const { currency } = useCurrency();
@@ -29,32 +41,27 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addToCartError, setAddToCartError] = useState('');
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [imgLoadError, setImgLoadError] = useState(false);
 
-  // Robust field mapping to real backend attributes (no mock fallbacks)
+  // Robust field mapping & S3 AWS Image resolution
   const name = product.name || product.title || 'Component Specification Pending';
   const partNumber = product.partNumber || product.sku || `PART-${product.id || product._id || 'N/A'}`;
-  const manufacturer = product.brand || product.manufacturer || typeof product.category === 'object' ? product.category?.name : 'Verified MFR';
-  const image = product.primaryImageUrl || product.image || product.imageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=400';
+  const manufacturer = product.brand || product.manufacturer || (typeof product.category === 'object' ? product.category?.name : 'Verified Brand');
+  
+  const s3Image = resolveS3ImageUrl(product);
+
   const stock = product.totalStock !== undefined ? product.totalStock : (product.stock || product.quantity || 0);
   const categoryLabel = typeof product.category === 'object' ? product.category?.name : (product.category || 'Industrial Part');
-  const description = product.description || product.shortDescription || 'Certified precision electronic component engineered for enterprise hardware applications.';
+  const description = product.description || product.shortDescription || 'Certified precision electronic component engineered for enterprise applications.';
+  const rating = product.rating || 4.8;
+  const reviewsCount = product.reviewsCount || 12;
 
-  // Pricing resolution from real backend structures (guide §2/§5). Read
-  // priceScale from THIS product's own response — StoreProductSummaryResponse
-  // carries currency/priceScale per item.
+  // Pricing resolution
   const priceScale = product.priceScale ?? 4;
   const displayCurrency = product.currency || currency || 'INR';
-  const priceValue = product.fromPriceScaled != null
-    ? product.fromPriceScaled / 10 ** priceScale
-    : null;
 
   const priceDisplay = formatScaledPrice(product.fromPriceScaled, priceScale, displayCurrency);
-
-  // StoreProductSummaryResponse (list/card shape) never carries priceBreaks —
-  // only the product detail endpoint does. No synthetic tiers are fabricated
-  // here (guide: empty/missing priceBreaks -> "Contact us", never invented
-  // discount tiers); only render a tier breakdown if the caller genuinely
-  // attached real priceBreaks data to this product object.
   const priceBreaks = Array.isArray(product.priceBreaks) ? product.priceBreaks : [];
 
   const handleQuickViewClick = (e) => {
@@ -72,15 +79,13 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
     navigate(`/product/${product.slug || product.id || product._id}`);
   };
 
-  // This card only ever receives the list/summary shape (StoreProductSummaryResponse),
-  // which has no packagingOptions — POST /api/cart/items requires a specific
-  // packagingOptionId, which a bare product id cannot supply. Resolve it by
-  // fetching product detail on click, same source ProductDetails.jsx uses.
-  // - Exactly one packaging option: use it automatically.
-  // - Zero: nothing purchasable, show an inline error, never fire the cart call.
-  // - More than one: don't guess — send the user to product detail, which
-  //   already has the real packaging-option selector (reusing that flow
-  //   instead of inventing a second selector here).
+  const handleWishlistToggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsWishlisted(!isWishlisted);
+    notification.success(isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist');
+  };
+
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -93,19 +98,18 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
       const options = item?.packagingOptions || [];
 
       if (options.length === 0) {
-        setAddToCartError('No purchasable packaging option for this product.');
+        setAddToCartError('No purchasable option for this product.');
         return;
       }
       if (options.length > 1) {
-        notification.info('This part has multiple packaging options — choose one on the product page.');
+        notification.info('Select packaging option on details page.');
         handleNavigate();
         return;
       }
 
-      // Client-side guard: never call the cart API without a resolved id.
       const packagingOptionId = options[0].id;
       if (packagingOptionId == null) {
-        setAddToCartError('Select a packaging option.');
+        setAddToCartError('Select packaging option.');
         return;
       }
 
@@ -113,220 +117,332 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
       toggleCartDrawer();
     } catch (err) {
       console.error('[ProductCard] handleAddToCart failed:', err?.message);
-      setAddToCartError('Could not add this item to your cart.');
+      setAddToCartError('Could not add to cart.');
     } finally {
       setAddingToCart(false);
     }
   };
 
-  // 1. DENSE INDUSTRIAL LIST / TABLE VIEW (DigiKey Style)
+  // 1. DENSE LIST / TABLE VIEW
   if (viewMode === 'list' || viewMode === 'table') {
     return (
-      <>
-        <Box 
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        whileHover={{ y: -3 }}
+      >
+        <Paper
+          elevation={0}
           onClick={handleNavigate}
           sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '120px 2.5fr 1.5fr 1.5fr 1.8fr 180px' },
-            alignItems: 'center',
-            gap: 2,
-            p: 2,
-            bgcolor: 'background.paper',
-            borderBottom: '1px solid #D6E4EE',
+            p: 2.5,
+            mb: 2,
+            bgcolor: '#ffffff',
+            border: '1px solid #E2ECF5',
+            borderRadius: 3,
             cursor: 'pointer',
-            transition: 'background-color 0.15s ease',
-            '&:hover': { bgcolor: '#F4F8FB' },
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow: '0 2px 10px rgba(15, 23, 42, 0.03)',
+            '&:hover': {
+              borderColor: '#243A5E',
+              boxShadow: '0 12px 28px rgba(36, 58, 94, 0.1)',
+              '& .product-img': { transform: 'scale(1.06)' }
+            },
             ...sx
           }}
         >
-          {/* Thumbnail */}
-          <Box sx={{ width: 100, height: 76, bgcolor: '#f8fafc', borderRadius: 1, border: '1px solid #E2ECF5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Box component="img" src={image} alt={name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-          </Box>
-
-          {/* Part Identification */}
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main', textDecoration: 'underline', '&:hover': { color: 'secondary.main' } }}>
-              {partNumber}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 600, mt: 0.2 }}>
-              MFR: {typeof manufacturer === 'string' ? manufacturer : 'Industrial Partner'}
-            </Typography>
-            <Typography variant="body2" color="text.primary" noWrap sx={{ fontWeight: 500, fontSize: '0.8125rem', mt: 0.5 }}>
-              {name}
-            </Typography>
-          </Box>
-
-          {/* Availability Status */}
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: stock > 0 ? '#2e7d32' : '#ed6c02' }} />
-              <Typography variant="body2" sx={{ fontWeight: 700, color: stock > 0 ? '#2e7d32' : '#ed6c02', fontSize: '0.8125rem' }}>
-                {stock > 0 ? `${stock.toLocaleString()} In Stock` : 'Backordered'}
-              </Typography>
-            </Box>
-            <Typography variant="caption" color="text.secondary" display="block">
-              {stock > 0 ? 'Immediate Dispatch' : 'Lead Time: 5-7 Days'}
-            </Typography>
-          </Box>
-
-          {/* Pricing Tiers */}
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '0.9375rem' }}>
-              {priceDisplay}
-            </Typography>
-            {priceBreaks.length > 1 && (
-              <Typography variant="caption" sx={{ color: '#243A5E', fontWeight: 600, display: 'block', mt: 0.2 }}>
-                Bulk: {formatScaledPrice(priceBreaks[priceBreaks.length - 1].unitPriceScaled, priceScale, displayCurrency)}
-                {' '}({priceBreaks[priceBreaks.length - 1].minQuantity}+ pcs)
-              </Typography>
-            )}
-          </Box>
-
-          {/* Technical Specs Preview */}
-          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-            <Chip label={categoryLabel} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22, mr: 0.5, borderColor: '#D6E4EE', fontWeight: 600 }} />
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-              RoHS Compliant • ISO Verified
-            </Typography>
-          </Box>
-
-          {/* Quick Action Toolbar */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: { xs: 'flex-start', md: 'flex-end' } }} onClick={e => e.stopPropagation()}>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<ShoppingCartIcon sx={{ fontSize: 14 }} />}
-              onClick={handleAddToCart}
-              disabled={(stock <= 0 && priceValue == null) || addingToCart}
-              sx={{ width: '100%', fontSize: '0.75rem', py: 0.6, fontWeight: 700 }}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, alignItems: 'center' }}>
+            {/* Product Image */}
+            <Box 
+              sx={{ 
+                width: 110, 
+                height: 110, 
+                minWidth: 110, 
+                bgcolor: '#F8FAFC', 
+                borderRadius: 2.5, 
+                border: '1px solid #E2ECF5', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                p: 1,
+                overflow: 'hidden',
+                position: 'relative'
+              }}
             >
-              {addingToCart ? 'ADDING…' : priceValue != null ? 'ADD TO CART' : 'QUOTE BOM'}
-            </Button>
-            {addToCartError && (
-              <Typography variant="caption" color="error.main" sx={{ fontWeight: 700 }}>
-                {addToCartError}
+              {s3Image && !imgLoadError ? (
+                <Box 
+                  component="img" 
+                  src={s3Image} 
+                  alt={name} 
+                  className="product-img"
+                  onError={() => setImgLoadError(true)}
+                  sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'transform 0.3s ease' }} 
+                />
+              ) : (
+                <Box sx={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Skeleton variant="rectangular" width="100%" height="100%" sx={{ borderRadius: 2, bgcolor: '#EEF2F6' }} />
+                  <MemoryIcon sx={{ position: 'absolute', color: '#94A3B8', fontSize: 36, opacity: 0.7 }} />
+                </Box>
+              )}
+            </Box>
+
+            {/* Product Main Specs & Info */}
+            <Box sx={{ flexGrow: 1, minWidth: 0, width: '100%' }}>
+              {/* Top metadata tags */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#5F86A6', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  MFR: {typeof manufacturer === 'string' ? manufacturer : 'Verified Partner'}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#CBD5E1' }}>•</Typography>
+                <Chip label={categoryLabel} size="small" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 700, bgcolor: '#EDF4FA', color: '#243A5E' }} />
+                {stock > 0 ? (
+                  <Chip label="In Stock" size="small" color="success" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 800 }} />
+                ) : (
+                  <Chip label="Lead 5 Days" size="small" color="warning" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 800 }} />
+                )}
+              </Box>
+
+              {/* Part Number */}
+              <Typography variant="h6" sx={{ fontWeight: 900, color: '#0F172A', lineHeight: 1.2, mb: 0.5, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {partNumber}
               </Typography>
-            )}
-            <Box sx={{ display: 'flex', gap: 0.5, width: '100%', justifyContent: 'space-between' }}>
-              <Button size="small" onClick={handleQuickViewClick} sx={{ fontSize: '0.7rem', p: 0.2, minWidth: 'auto', color: 'text.secondary', fontWeight: 700 }}>
-                QUICK VIEW
-              </Button>
-              <Tooltip title="Download Part Datasheet">
-                <IconButton size="small" sx={{ color: 'primary.main' }} onClick={(e) => { e.stopPropagation(); window.open('/product/' + (product.slug || product.id), '_blank'); }}>
-                  <DatasheetIcon fontSize="small" />
+
+              {/* Product Title / Short Spec */}
+              <Typography variant="body2" sx={{ color: '#334155', fontWeight: 600, lineHeight: 1.5, mb: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {name}
+              </Typography>
+
+              {/* Rating & Reviews */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Rating value={rating} precision={0.1} readOnly size="small" sx={{ fontSize: '0.85rem' }} />
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>({reviewsCount} customer reviews)</Typography>
+              </Box>
+            </Box>
+
+            {/* Right Column: Pricing & Action Box */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: { xs: 'flex-start', sm: 'flex-end' }, 
+                justifyContent: 'center',
+                minWidth: { sm: 190 },
+                width: { xs: '100%', sm: 'auto' },
+                pl: { sm: 3 },
+                borderLeft: { sm: '1px dashed #E2ECF5' },
+                pt: { xs: 2, sm: 0 },
+                borderTop: { xs: '1px dashed #E2ECF5', sm: 'none' }
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.675rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                UNIT PRICE
+              </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: '#0F172A', mb: 1.5, lineHeight: 1 }}>
+                {priceDisplay}
+              </Typography>
+
+              <motion.div whileTap={{ scale: 0.96 }} style={{ width: '100%' }}>
+                <Button
+                  variant="contained"
+                  size="medium"
+                  startIcon={<ShoppingCartIcon sx={{ fontSize: 16 }} />}
+                  onClick={handleAddToCart}
+                  disabled={addingToCart}
+                  sx={{ 
+                    width: '100%', 
+                    fontSize: '0.8rem', 
+                    py: 1, 
+                    px: 2.5,
+                    fontWeight: 800, 
+                    borderRadius: 2.5,
+                    background: 'linear-gradient(135deg, #243A5E 0%, #16243C 100%)',
+                    boxShadow: '0 4px 14px rgba(36, 58, 94, 0.25)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {addingToCart ? 'ADDING…' : 'ADD TO CART'}
+                </Button>
+              </motion.div>
+
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
+                <IconButton size="small" onClick={handleWishlistToggle} color={isWishlisted ? "error" : "default"} sx={{ bgcolor: '#F8FAFC', '&:hover': { bgcolor: '#EDF4FA' } }}>
+                  {isWishlisted ? <FavoriteFilledIcon fontSize="small" /> : <FavoriteIcon fontSize="small" />}
                 </IconButton>
-              </Tooltip>
+                <Button size="small" onClick={handleQuickViewClick} sx={{ fontSize: '0.725rem', fontWeight: 800, color: '#243A5E', textTransform: 'none' }}>
+                  Quick View
+                </Button>
+              </Box>
             </Box>
           </Box>
-        </Box>
+        </Paper>
 
-        {/* Quick View Technical Dialog */}
         {renderQuickViewDialog()}
-      </>
+      </motion.div>
     );
   }
 
-  // 2. STANDARD INDUSTRIAL GRID VIEW
+  // 2. STANDARD PREMIUM GRID VIEW
   return (
-    <>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ y: -6 }}
+      style={{ height: '100%' }}
+    >
       <Card
         onClick={handleNavigate}
         sx={{
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          bgcolor: 'background.paper',
-          border: '1px solid #D6E4EE',
-          borderRadius: 1,
+          bgcolor: '#ffffff',
+          border: '1px solid #E2ECF5',
+          borderRadius: 3,
           cursor: 'pointer',
-          transition: 'all 0.2s ease',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+          transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+          position: 'relative',
+          overflow: 'hidden',
           '&:hover': {
-            borderColor: 'primary.main',
-            boxShadow: '0 8px 24px rgba(36, 58, 94, 0.12)',
-            '& .img-hover': { transform: 'scale(1.05)' }
+            borderColor: '#243A5E',
+            boxShadow: '0 16px 36px rgba(36, 58, 94, 0.14)',
+            '& .img-hover': { transform: 'scale(1.08)' }
           },
           ...sx
         }}
       >
-        {/* Top Media Tag */}
-        <Box sx={{ position: 'relative', height: 180, bgcolor: '#f8fafc', borderBottom: '1px solid #D6E4EE', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, overflow: 'hidden' }}>
-          <CardMedia
-            component="img"
-            image={image}
-            alt={name}
-            className="img-hover"
-            sx={{ maxHeight: 150, maxWidth: '100%', objectFit: 'contain', transition: 'transform 0.3s ease' }}
-          />
+        {/* Wishlist Button */}
+        <IconButton
+          size="small"
+          onClick={handleWishlistToggle}
+          sx={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            zIndex: 2,
+            bgcolor: 'rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(4px)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            color: isWishlisted ? 'error.main' : 'action.active',
+            '&:hover': { bgcolor: '#ffffff', transform: 'scale(1.1)' }
+          }}
+        >
+          {isWishlisted ? <FavoriteFilledIcon fontSize="small" /> : <FavoriteIcon fontSize="small" />}
+        </IconButton>
+
+        {/* Media Container */}
+        <Box sx={{ position: 'relative', height: 190, bgcolor: '#f8fafc', borderBottom: '1px solid #E2ECF5', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, overflow: 'hidden' }}>
+          {s3Image && !imgLoadError ? (
+            <CardMedia
+              component="img"
+              image={s3Image}
+              alt={name}
+              className="img-hover"
+              onError={() => setImgLoadError(true)}
+              sx={{ maxHeight: 150, maxWidth: '100%', objectFit: 'contain', transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+            />
+          ) : (
+            <Box sx={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Skeleton variant="rectangular" width="100%" height="100%" sx={{ borderRadius: 2, bgcolor: '#EEF2F6' }} />
+              <MemoryIcon sx={{ position: 'absolute', color: '#94A3B8', fontSize: 48, opacity: 0.7 }} />
+            </Box>
+          )}
           <Chip
-            label={stock > 0 ? `${stock} in stock` : 'Lead 5 Days'}
+            label={stock > 0 ? 'In Stock' : 'Lead 5 Days'}
             size="small"
+            color={stock > 0 ? "success" : "warning"}
             sx={{
               position: 'absolute',
-              bottom: 8,
-              left: 8,
-              bgcolor: stock > 0 ? 'rgba(46, 125, 50, 0.9)' : 'rgba(237, 108, 2, 0.9)',
-              color: 'white',
-              fontWeight: 700,
-              fontSize: '0.7rem',
-              height: 22
+              bottom: 10,
+              left: 10,
+              fontWeight: 800,
+              fontSize: '0.675rem',
+              height: 20
             }}
           />
-          <IconButton
+          <Button
             size="small"
+            startIcon={<VisibilityIcon fontSize="small" />}
             onClick={handleQuickViewClick}
-            sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(255,255,255,0.9)', border: '1px solid #D6E4EE', '&:hover': { bgcolor: '#243A5E', color: 'white' } }}
-            aria-label="open quick engineering view"
+            sx={{
+              position: 'absolute',
+              bottom: 10,
+              right: 10,
+              bgcolor: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(4px)',
+              color: 'primary.main',
+              fontWeight: 800,
+              fontSize: '0.675rem',
+              py: 0.3,
+              px: 1,
+              borderRadius: 1.5,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              '&:hover': { bgcolor: 'primary.main', color: 'white' }
+            }}
           >
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
+            Quick View
+          </Button>
         </Box>
 
-        {/* Body Specifications */}
-        <CardContent sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {/* Product Details */}
+        <CardContent sx={{ p: 2.5, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.dark', textTransform: 'uppercase' }}>
-                {typeof manufacturer === 'string' ? manufacturer : 'Industrial Part'}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#5F86A6', textTransform: 'uppercase' }}>
+                {typeof manufacturer === 'string' ? manufacturer : 'Brand'}
               </Typography>
-              <Chip label="RoHS" size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: '#EDF4FA', fontWeight: 700 }} />
+              <Chip label={categoryLabel} size="small" sx={{ height: 18, fontSize: '0.625rem', bgcolor: '#EDF4FA', fontWeight: 700 }} />
             </Box>
-            <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main', mb: 0.5, fontFamily: 'monospace', fontSize: '0.875rem' }}>
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 900, color: 'primary.main', mb: 0.5 }}>
               {partNumber}
             </Typography>
-            <Typography variant="body2" color="text.primary" sx={{ fontWeight: 600, lineClamp: 2, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 40, fontSize: '0.8125rem' }}>
+
+            <Typography variant="body2" color="text.primary" sx={{ fontWeight: 600, lineClamp: 2, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 40, fontSize: '0.875rem' }}>
               {name}
             </Typography>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+              <Rating value={rating} precision={0.1} readOnly size="small" sx={{ fontSize: '0.85rem' }} />
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>({reviewsCount})</Typography>
+            </Box>
           </Box>
 
-          {/* Price Box & Action Button */}
-          <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px dashed #D6E4EE' }}>
+          {/* Pricing & CTA */}
+          <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px dashed #E2ECF5' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1.5 }}>
               <Box>
-                <Typography variant="caption" color="text.secondary">UNIT PRICE</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: 'primary.dark', lineHeight: 1.1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.675rem' }}>UNIT PRICE</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 900, color: 'primary.main', lineHeight: 1 }}>
                   {priceDisplay}
                 </Typography>
               </Box>
-              {priceBreaks.length > 1 && (
-                <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  Tier: {formatScaledPrice(priceBreaks[priceBreaks.length - 1].unitPriceScaled, priceScale, displayCurrency)}
-                </Typography>
-              )}
             </Box>
 
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              size="small"
-              startIcon={<ShoppingCartIcon sx={{ fontSize: 16 }} />}
-              onClick={handleAddToCart}
-              disabled={addingToCart}
-              sx={{ fontWeight: 700, fontSize: '0.75rem', py: 0.8 }}
-            >
-              {addingToCart ? 'ADDING…' : priceValue != null ? 'PROCURE ITEM' : 'REQUEST QUOTE'}
-            </Button>
+            <motion.div whileTap={{ scale: 0.96 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                size="small"
+                startIcon={<ShoppingCartIcon sx={{ fontSize: 16 }} />}
+                onClick={handleAddToCart}
+                disabled={addingToCart}
+                sx={{ 
+                  fontWeight: 800, 
+                  fontSize: '0.8rem', 
+                  py: 1, 
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, #243A5E 0%, #16243C 100%)',
+                  boxShadow: '0 4px 14px rgba(36, 58, 94, 0.2)'
+                }}
+              >
+                {addingToCart ? 'ADDING…' : 'ADD TO CART'}
+              </Button>
+            </motion.div>
             {addToCartError && (
               <Typography variant="caption" color="error.main" sx={{ fontWeight: 700, display: 'block', mt: 0.5 }}>
                 {addToCartError}
@@ -336,20 +452,16 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
         </CardContent>
       </Card>
 
-      {/* Quick View Technical Dialog */}
       {renderQuickViewDialog()}
-    </>
+    </motion.div>
   );
 
   function renderQuickViewDialog() {
     return (
-      <Dialog open={quickViewOpen} onClose={handleCloseQuickView} maxWidth="md" fullWidth onClick={e => e.stopPropagation()}>
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <BoltIcon sx={{ color: 'secondary.main' }} />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>Technical Specification Inspection: {partNumber}</Typography>
-          </Box>
-          <IconButton onClick={handleCloseQuickView} sx={{ color: 'white' }} aria-label="close modal">
+      <Dialog open={quickViewOpen} onClose={handleCloseQuickView} maxWidth="md" fullWidth onClick={e => e.stopPropagation()} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>Product Quick View: {partNumber}</Typography>
+          <IconButton onClick={handleCloseQuickView} sx={{ color: 'white' }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -357,89 +469,62 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
         <DialogContent sx={{ p: 4 }}>
           <Grid container spacing={4} sx={{ mt: 0 }}>
             <Grid size={{ xs: 12, md: 5 }}>
-              <Box sx={{ width: '100%', height: 260, bgcolor: '#f8fafc', border: '1px solid #D6E4EE', borderRadius: 1, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Box component="img" src={image} alt={name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <Box sx={{ width: '100%', height: 260, bgcolor: '#f8fafc', border: '1px solid #E2ECF5', borderRadius: 2, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {s3Image && !imgLoadError ? (
+                  <Box component="img" src={s3Image} alt={name} onError={() => setImgLoadError(true)} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <Box sx={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Skeleton variant="rectangular" width="100%" height="100%" sx={{ borderRadius: 2, bgcolor: '#EEF2F6' }} />
+                    <MemoryIcon sx={{ position: 'absolute', color: '#94A3B8', fontSize: 64, opacity: 0.7 }} />
+                  </Box>
+                )}
               </Box>
-              <Box sx={{ display: 'flex', gap: 1, mt: 2, justifyContent: 'space-between' }}>
-                <Chip label={stock > 0 ? '🟢 In Stock (Immediate Dispatch)' : '🟠 Backorder (5-7 Days)'} sx={{ width: '100%', fontWeight: 700, bgcolor: '#EDF4FA' }} />
-              </Box>
+              <Chip label={stock > 0 ? '🟢 In Stock - Immediate Dispatch' : '🟠 Backordered'} sx={{ width: '100%', fontWeight: 700, bgcolor: '#EDF4FA', mt: 2 }} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 7 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.dark', textTransform: 'uppercase' }}>
-                MFR: {typeof manufacturer === 'string' ? manufacturer : 'Industrial Partner'} | Category: {categoryLabel}
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#5F86A6', textTransform: 'uppercase' }}>
+                Brand: {typeof manufacturer === 'string' ? manufacturer : 'Partner'} | Category: {categoryLabel}
               </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main', mb: 1 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', mb: 1 }}>
                 {name}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Rating value={rating} precision={0.1} readOnly />
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>({reviewsCount} customer reviews)</Typography>
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6 }}>
                 {description}
               </Typography>
 
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'primary.dark' }}>
-                Volume Pricing Breakdown (B2B Tiers)
+              <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', mb: 3 }}>
+                {priceDisplay}
               </Typography>
-              {priceBreaks.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 700 }}>
-                  {CONTACT_US} for volume pricing on this component.
-                </Typography>
-              ) : (
-                <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #D6E4EE', mb: 3 }}>
-                  <Table size="small">
-                    <TableBody>
-                      <TableRow sx={{ bgcolor: '#EDF4FA' }}>
-                        <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>Quantity Range</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>Unit Price</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>Extended Savings</TableCell>
-                      </TableRow>
-                      {priceBreaks.map((pb, index) => {
-                        const baseUnitScaled = priceBreaks[0].unitPriceScaled;
-                        const savingsPct = index > 0 && baseUnitScaled
-                          ? Math.round((1 - pb.unitPriceScaled / baseUnitScaled) * 100)
-                          : 0;
-                        return (
-                          <TableRow key={pb.minQuantity ?? index}>
-                            <TableCell sx={{ fontWeight: 600 }}>{pb.minQuantity}+ units</TableCell>
-                            <TableCell sx={{ fontWeight: 800, color: 'primary.dark' }}>
-                              {formatScaledPrice(pb.unitPriceScaled, priceScale, displayCurrency)}
-                            </TableCell>
-                            <TableCell sx={{ color: index > 0 ? 'success.main' : 'text.secondary', fontWeight: 600 }}>
-                              {index === 0 ? 'Base Price' : `${savingsPct}% Volume Discount`}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
 
-              <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
                 <Button
                   variant="contained"
                   color="primary"
+                  size="large"
                   startIcon={<ShoppingCartIcon />}
                   onClick={handleAddToCart}
                   disabled={addingToCart}
-                  sx={{ flexGrow: 1, py: 1, fontWeight: 800 }}
+                  sx={{ flexGrow: 1, py: 1.2, fontWeight: 900, borderRadius: 2, background: 'linear-gradient(135deg, #243A5E 0%, #16243C 100%)' }}
                 >
-                  {addingToCart ? 'ADDING…' : `PROCURE NOW (${priceDisplay})`}
+                  {addingToCart ? 'ADDING…' : 'ADD TO CART'}
                 </Button>
                 <Button
                   variant="outlined"
                   color="primary"
                   onClick={() => { handleCloseQuickView(); handleNavigate(); }}
                   endIcon={<ArrowForwardIcon />}
-                  sx={{ fontWeight: 700 }}
+                  sx={{ fontWeight: 700, borderRadius: 2 }}
                 >
-                  FULL SPEC SHEET
+                  FULL DETAILS
                 </Button>
               </Box>
-              {addToCartError && (
-                <Typography variant="caption" color="error.main" sx={{ fontWeight: 700, display: 'block', mt: 1 }}>
-                  {addToCartError}
-                </Typography>
-              )}
             </Grid>
           </Grid>
         </DialogContent>

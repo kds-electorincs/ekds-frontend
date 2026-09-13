@@ -79,6 +79,10 @@ const DashboardOrders = () => {
   }, [page, size, paymentFilter, fulfilmentFilter]);
 
   const handleViewDetail = async (id) => {
+    if (!id) {
+      toast.error('Invalid order ID.');
+      return;
+    }
     setDetailLoading(true);
     setDetailOpen(true);
     try {
@@ -93,9 +97,10 @@ const DashboardOrders = () => {
   };
 
   const handleUpdateStatus = async () => {
-    if (!selectedOrder || !newStatus) return;
+    const orderId = selectedOrder?.orderId || selectedOrder?.id;
+    if (!orderId || !newStatus) return;
     try {
-      const res = await adminOrderService.updateStatus(selectedOrder.id, newStatus, statusNote);
+      const res = await adminOrderService.updateStatus(orderId, newStatus, statusNote);
       setSelectedOrder(res.data || res);
       toast.success('Order status updated.');
       setStatusOpen(false);
@@ -108,9 +113,10 @@ const DashboardOrders = () => {
   };
 
   const handleShipOrder = async () => {
-    if (!selectedOrder || !courierName || !awbNumber) return;
+    const orderId = selectedOrder?.orderId || selectedOrder?.id;
+    if (!orderId || !courierName || !awbNumber) return;
     try {
-      const res = await adminOrderService.shipOrder(selectedOrder.id, courierName, awbNumber);
+      const res = await adminOrderService.shipOrder(orderId, courierName, awbNumber);
       setSelectedOrder(res.data || res);
       toast.success('Order marked as shipped.');
       setShipOpen(false);
@@ -183,25 +189,32 @@ const DashboardOrders = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                orders.map((order) => (
-                  <TableRow key={order.id} hover>
-                    <TableCell sx={{ fontWeight: 600 }}>{order.orderNumber || order.id}</TableCell>
-                    <TableCell>{order.placedAt ? new Date(order.placedAt).toLocaleDateString() : '—'}</TableCell>
-                    <TableCell>{order.itemCount ?? order.lineItemCount ?? '—'}</TableCell>
-                    <TableCell>₹{order.totalAmountScaled != null ? (order.totalAmountScaled / 10000).toFixed(2) : order.totalAmount ?? '—'}</TableCell>
-                    <TableCell>
-                      <Chip label={order.paymentStatus || '—'} size="small" color={getStatusColor(order.paymentStatus)} sx={{ fontWeight: 600, borderRadius: 1.5 }} />
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={order.fulfilmentStatus || '—'} size="small" color={getStatusColor(order.fulfilmentStatus)} sx={{ fontWeight: 600, borderRadius: 1.5 }} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton color="primary" size="small" title="View Details" onClick={() => handleViewDetail(order.id)}>
-                        <VisibilityIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
+                orders.map((order) => {
+                  const targetId = order.orderId || order.id;
+                  const total = order.grandTotalInrScaled != null 
+                    ? (order.grandTotalInrScaled / (10 ** (order.priceScale || 4))).toFixed(2)
+                    : (order.totalAmountScaled != null ? (order.totalAmountScaled / 10000).toFixed(2) : (order.grandTotal ?? order.totalAmount ?? '—'));
+
+                  return (
+                    <TableRow key={targetId} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>{order.orderNumber || targetId}</TableCell>
+                      <TableCell>{order.placedAt ? new Date(order.placedAt).toLocaleDateString() : '—'}</TableCell>
+                      <TableCell>{order.itemCount ?? order.lineItemCount ?? '—'}</TableCell>
+                      <TableCell>₹{total}</TableCell>
+                      <TableCell>
+                        <Chip label={order.paymentStatus || '—'} size="small" color={getStatusColor(order.paymentStatus)} sx={{ fontWeight: 600, borderRadius: 1.5 }} />
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={order.fulfilmentStatus || '—'} size="small" color={getStatusColor(order.fulfilmentStatus)} sx={{ fontWeight: 600, borderRadius: 1.5 }} />
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton color="primary" size="small" title="View Details" onClick={() => handleViewDetail(targetId)}>
+                          <VisibilityIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -247,7 +260,7 @@ const DashboardOrders = () => {
                 </Grid>
               </Grid>
 
-              {selectedOrder.lineItems && selectedOrder.lineItems.length > 0 && (
+              {((selectedOrder.items && selectedOrder.items.length > 0) || (selectedOrder.lineItems && selectedOrder.lineItems.length > 0)) && (
                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                   <Table size="small">
                     <TableHead>
@@ -259,14 +272,24 @@ const DashboardOrders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedOrder.lineItems.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{item.productName || item.productSlug || '—'}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>₹{item.unitPriceInrScaled != null ? (item.unitPriceInrScaled / 10000).toFixed(4) : item.unitPrice ?? '—'}</TableCell>
-                          <TableCell>₹{item.subtotalInrScaled != null ? (item.subtotalInrScaled / 10000).toFixed(2) : item.subtotal ?? '—'}</TableCell>
-                        </TableRow>
-                      ))}
+                      {(selectedOrder.items || selectedOrder.lineItems).map((item, idx) => {
+                        const unitPrice = item.unitPriceExGstInrScaled != null 
+                          ? (item.unitPriceExGstInrScaled / (10 ** (selectedOrder.priceScale || 4))).toFixed(2)
+                          : (item.unitPriceInrScaled != null ? (item.unitPriceInrScaled / 10000).toFixed(4) : (item.unitPrice ?? '—'));
+                        
+                        const subtotal = item.lineInclGstInrScaled != null 
+                          ? (item.lineInclGstInrScaled / (10 ** (selectedOrder.priceScale || 4))).toFixed(2)
+                          : (item.lineExGstInrScaled != null ? (item.lineExGstInrScaled / (10 ** (selectedOrder.priceScale || 4))).toFixed(2) : (item.subtotalInrScaled != null ? (item.subtotalInrScaled / 10000).toFixed(2) : (item.subtotal ?? '—')));
+
+                        return (
+                          <TableRow key={idx}>
+                            <TableCell>{item.productName || item.productSlug || '—'}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>₹{unitPrice}</TableCell>
+                            <TableCell>₹{subtotal}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>

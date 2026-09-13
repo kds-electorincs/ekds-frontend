@@ -22,6 +22,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import EmptyState from '../../components/common/EmptyState';
 import notification from '../../utils/notification';
 import { formatPrice as formatScaledPrice } from '../../utils/priceUtils';
+import { submitToWeb3Forms } from '../../services/web3formsService';
 
 const Quotations = () => {
   const { addToCart, toggleCartDrawer } = useCart();
@@ -29,6 +30,7 @@ const Quotations = () => {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [addingBomToCart, setAddingBomToCart] = useState(false);
+  const [submittingRfq, setSubmittingRfq] = useState(false);
   const [bomCartError, setBomCartError] = useState('');
 
   // BOM Upload & Live Resolution State
@@ -164,10 +166,37 @@ const Quotations = () => {
     }
   };
 
-  const handleSubmitRfq = () => {
-    notification.success("BOM Quotation Request (RFQ) transmitted to corporate sales engineers. Expect formal tiered B2B quote within 24 hours.");
-    setBomLines([]);
-    setBomValidated(false);
+  const handleSubmitRfq = async () => {
+    if (!bomLines || bomLines.length === 0) {
+      notification.warning("No BOM line items available to submit as RFQ.");
+      return;
+    }
+
+    setSubmittingRfq(true);
+
+    const formattedBomSummary = bomLines.map((line, idx) => (
+      `Item #${idx + 1}: ${line.queryPart} | Qty: ${line.targetQty} | Status: ${line.status} | Matched: ${line.matchedProduct ? line.matchedProduct.partNumber || line.matchedProduct.name : 'Unmatched'}`
+    )).join('\n');
+
+    const success = await submitToWeb3Forms({
+      subject: `New Corporate BOM RFQ Submission (${bomLines.length} Part Lines)`,
+      fromName: 'BOM RFQ Portal',
+      formData: {
+        'Total Line Items': bomLines.length,
+        'BOM Line Items Details': formattedBomSummary,
+        'Raw Input Text': bomTextInput
+      }
+    });
+
+    setSubmittingRfq(false);
+
+    if (success) {
+      notification.success("BOM Quotation Request (RFQ) transmitted to Prakash@kdselectronics.com. Expect formal tiered B2B quote within 24 hours.");
+      setBomLines([]);
+      setBomValidated(false);
+    } else {
+      notification.error("Failed to transmit RFQ via Web3Forms. Please try again or contact Prakash@kdselectronics.com directly.");
+    }
   };
 
   return (
@@ -289,11 +318,12 @@ const Quotations = () => {
                   <Button
                     variant="outlined"
                     color="primary"
-                    startIcon={<SendIcon />}
+                    startIcon={submittingRfq ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
                     onClick={handleSubmitRfq}
+                    disabled={submittingRfq || addingBomToCart}
                     sx={{ fontWeight: 800 }}
                   >
-                    TRANSMIT AS FORMAL RFQ TO ENGINEERS
+                    {submittingRfq ? 'TRANSMITTING RFQ...' : 'TRANSMIT AS FORMAL RFQ TO ENGINEERS'}
                   </Button>
                   <Button
                     variant="contained"

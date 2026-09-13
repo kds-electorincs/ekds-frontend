@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Grid, Typography, Box, Button, Divider, Paper, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip, IconButton,
-  CircularProgress, Breadcrumbs, Tab, Tabs, TextField, Tooltip
+  CircularProgress, Breadcrumbs, Tab, Tabs, TextField, Tooltip, Container, Skeleton
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -12,7 +12,8 @@ import {
   Download as DownloadIcon,
   VerifiedUser as VerifiedIcon,
   NavigateNext as NavigateNextIcon,
-  ContentCopy as CopyIcon
+  ContentCopy as CopyIcon,
+  Memory as MemoryIcon
 } from '@mui/icons-material';
 import notification from '../utils/notification';
 import { productPublicService, categoryPublicService } from '../services/apiServices';
@@ -39,6 +40,7 @@ const ProductDetails = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [mainImgError, setMainImgError] = useState(false);
 
   useEffect(() => {
     const fetchComponentSpecification = async () => {
@@ -127,9 +129,18 @@ const ProductDetails = () => {
   };
   const stockText = renderStockInfo(product);
 
+  const resolveS3Url = (raw) => {
+    if (!raw) return null;
+    if (typeof raw !== 'string') return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    return `${CDN_BASE}/${raw.replace(/^\//, '')}`;
+  };
+
   const imageArray = Array.isArray(product.images) && product.images.length > 0
-    ? product.images.map(img => img.url || `${CDN_BASE}/${img.objectKey}`)
-    : [product.primaryImageUrl || product.image || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=600'];
+    ? product.images.map(img => img.url || resolveS3Url(img.objectKey || img.url)).filter(Boolean)
+    : [resolveS3Url(product.primaryImageUrl || product.image || product.imageUrl || (product.primaryImage && product.primaryImage.objectKey))].filter(Boolean);
+
+  const mainImage = imageArray[activeImageIndex] || null;
 
   // Resolve selected packaging option (may have multiple: CUT_TAPE, FULL_REEL, etc.)
   const packagingOptions = product.packagingOptions || [];
@@ -200,7 +211,7 @@ const ProductDetails = () => {
   };
 
   return (
-    <Box sx={{ pb: 10 }}>
+    <Container maxWidth="lg" sx={{ pb: 10, pt: 2 }}>
       {/* 1. Breadcrumbs Header */}
       <Box sx={{ py: 2, borderBottom: '1px solid #D6E4EE', mb: 3 }}>
         <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
@@ -223,7 +234,14 @@ const ProductDetails = () => {
           {/* Left Column: Image Inspection Gallery */}
           <Grid size={{ xs: 12, md: 5 }}>
             <Box sx={{ width: '100%', height: 380, bgcolor: '#f8fafc', border: '1px solid #D6E4EE', borderRadius: 1.5, p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, position: 'relative' }}>
-              <Box component="img" src={imageArray[activeImageIndex]} alt={name} sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+              {mainImage && !mainImgError ? (
+                <Box component="img" src={mainImage} alt={name} onError={() => setMainImgError(true)} sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+              ) : (
+                <Box sx={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Skeleton variant="rectangular" width="100%" height="100%" sx={{ borderRadius: 1.5, bgcolor: '#EEF2F6' }} />
+                  <MemoryIcon sx={{ position: 'absolute', color: '#94A3B8', fontSize: 80, opacity: 0.7 }} />
+                </Box>
+              )}
               <Chip label={stock > 0 ? "🟢 READY TO DISPATCH" : (product.restockLeadDays != null ? `🟠 SHIPS IN ${product.restockLeadDays} DAYS` : "🟠 CONTACT FOR AVAILABILITY")} sx={{ position: 'absolute', bottom: 12, left: 12, fontWeight: 800, fontSize: '0.75rem', bgcolor: '#ffffff', border: '1px solid #D6E4EE' }} />
             </Box>
 
@@ -554,7 +572,7 @@ const ProductDetails = () => {
           </Grid>
         </Box>
       )}
-    </Box>
+    </Container>
   );
 };
 

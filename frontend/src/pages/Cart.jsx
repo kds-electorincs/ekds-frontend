@@ -1,7 +1,7 @@
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Divider, Grid,
-  Chip, Alert, CircularProgress, Tooltip,
+  Chip, Alert, CircularProgress, Tooltip, Container,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -265,7 +265,7 @@ const Cart = () => {
   };
 
   return (
-    <Box sx={{ py: 4, pb: 10 }}>
+    <Container maxWidth="lg" sx={{ py: 4, pb: 10 }}>
       {/* ── Header ── */}
       <Box sx={{ mb: 4, borderBottom: '2px solid #243A5E', pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 2 }}>
         <Box>
@@ -455,7 +455,7 @@ const Cart = () => {
           </Paper>
         </Box>
       )}
-    </Box>
+    </Container>
   );
 };
 

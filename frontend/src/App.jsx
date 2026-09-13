@@ -9,6 +9,8 @@ import UserDashboardLayout from './layouts/user/UserDashboardLayout';
 
 // Public Pages
 import Home from './pages/Home';
+import About from './pages/About';
+import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -91,12 +93,15 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<ProductListing />} />
           <Route path="/product/:id" element={<ProductDetails />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           
           {/* Customer Auth */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+          <Route path="/accept-invite" element={<AcceptInvitation />} />
 
           {/* E-Commerce Cart, Checkout & Order/Payment Status */}
           <Route path="/cart" element={<Cart />} />

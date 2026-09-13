@@ -18,6 +18,9 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Checkbox,
+  FormGroup,
+  FormControlLabel,
   useTheme
 } from '@mui/material';
 import {
@@ -29,12 +32,17 @@ import {
   Email as EmailIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../constants/roles';
+import { PERMISSIONS } from '../../constants/permissions';
 import { adminManagementService } from '../../services/apiServices';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
 import EmptyState from '../../components/common/EmptyState';
 
 const StaffManagement = () => {
+  const { user, hasPermission } = useAuth();
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN || hasPermission(PERMISSIONS.MANAGE_STAFF);
+
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,6 +52,41 @@ const StaffManagement = () => {
 
   const [rolesList, setRolesList] = useState([]);
   const [invitations, setInvitations] = useState([]);
+
+  // Role Creation modal state
+  const [openRoleModal, setOpenRoleModal] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleDesc, setNewRoleDesc] = useState('');
+  const [selectedPages, setSelectedPages] = useState(['PRODUCTS', 'CATEGORIES', 'ORDERS']);
+
+  const ADMIN_PAGES_LIST = ['PRODUCTS', 'CATEGORIES', 'ORDERS', 'USERS', 'SUPPORT', 'FINANCE', 'BANNERS', 'REPORTS'];
+
+  const handleCreateRole = async () => {
+    if (!newRoleName.trim()) {
+      toast.error('Role name is required.');
+      return;
+    }
+    if (selectedPages.length === 0) {
+      toast.error('Please select at least one page permission.');
+      return;
+    }
+    try {
+      await adminManagementService.createRole({
+        name: newRoleName.trim(),
+        description: newRoleDesc.trim(),
+        pages: selectedPages
+      });
+      toast.success(`Role "${newRoleName}" created successfully!`);
+      setOpenRoleModal(false);
+      setNewRoleName('');
+      setNewRoleDesc('');
+      setSelectedPages(['PRODUCTS', 'CATEGORIES', 'ORDERS']);
+      fetchAdmins();
+    } catch (err) {
+      console.error('Failed to create role:', err);
+      toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to create role.');
+    }
+  };
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -115,14 +158,41 @@ const StaffManagement = () => {
         toast.success('Staff role assignment updated successfully.');
         fetchAdmins();
       } else {
-        const roleIds = editStaff.roleId ? [Number(editStaff.roleId)] : [];
+        let targetRoleId = editStaff.roleId;
+        
+        // Find numeric ID in rolesList if available
+        if (targetRoleId && !isNaN(Number(targetRoleId))) {
+          targetRoleId = Number(targetRoleId);
+        } else {
+          const matched = rolesList.find(r => 
+            r.id === targetRoleId ||
+            r.name === targetRoleId ||
+            r.name === `ROLE_${targetRoleId}` ||
+            r.name?.replace('ROLE_', '') === targetRoleId
+          );
+          if (matched) {
+            targetRoleId = matched.id;
+          } else if (rolesList.length > 0) {
+            targetRoleId = rolesList[0].id;
+          } else {
+            targetRoleId = null;
+          }
+        }
+
+        if (!targetRoleId) {
+          toast.error('No valid RBAC Admin Role found in database. Please create a role first.');
+          return;
+        }
+
+        const roleIds = [targetRoleId];
         await adminManagementService.createInvitation({ email: editStaff.email, roleIds });
         toast.success(`Official invitation email dispatched to ${editStaff.email}`);
         fetchAdmins();
       }
     } catch (err) {
       console.error('Backend request failed:', err);
-      toast.error(err?.response?.data?.detail || err?.response?.data?.message || 'Failed to save staff member.');
+      const backendMessage = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error || 'Failed to save staff member.';
+      toast.error(backendMessage);
     } finally {
       handleClose();
     }
@@ -194,6 +264,15 @@ const StaffManagement = () => {
             sx={{ borderRadius: 2, px: 2.5, fontWeight: 600 }}
           >
             Refresh
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<SecurityIcon />}
+            onClick={() => setOpenRoleModal(true)}
+            sx={{ borderRadius: 2, px: 2.5, fontWeight: 600 }}
+          >
+            + Create RBAC Role
           </Button>
           <Button
             variant="contained"
@@ -357,6 +436,73 @@ const StaffManagement = () => {
             sx={{ fontWeight: 600, px: 3, borderRadius: 2, boxShadow: '0 4px 12px rgba(25, 118, 210, 0.24)' }}
           >
             {editStaff?.id ? 'Save Changes' : 'Send Invitation Email'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Role Modal */}
+      <Dialog open={openRoleModal} onClose={() => setOpenRoleModal(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          Create New Admin RBAC Role
+        </DialogTitle>
+        <DialogContent dividers sx={{ borderColor: 'divider' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Define a custom administrative access level and assign page-level CRUD permissions.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, py: 1 }}>
+            <TextField
+              label="Role Name"
+              fullWidth
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="e.g., INVENTORY_MANAGER"
+              helperText="Must be unique. Example: INVENTORY_MANAGER"
+            />
+            <TextField
+              label="Description"
+              fullWidth
+              multiline
+              rows={2}
+              value={newRoleDesc}
+              onChange={(e) => setNewRoleDesc(e.target.value)}
+              placeholder="Brief summary of permissions granted by this role"
+            />
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 1 }}>
+              Granted Admin Page Permissions:
+            </Typography>
+            <FormGroup row sx={{ gap: 1 }}>
+              {ADMIN_PAGES_LIST.map((page) => (
+                <FormControlLabel
+                  key={page}
+                  control={
+                    <Checkbox
+                      checked={selectedPages.includes(page)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedPages([...selectedPages, page]);
+                        } else {
+                          setSelectedPages(selectedPages.filter(p => p !== page));
+                        }
+                      }}
+                    />
+                  }
+                  label={page}
+                />
+              ))}
+            </FormGroup>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setOpenRoleModal(false)} color="inherit" sx={{ fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreateRole}
+            variant="contained"
+            color="secondary"
+            sx={{ fontWeight: 600, px: 3, borderRadius: 2 }}
+          >
+            Create Role
           </Button>
         </DialogActions>
       </Dialog>

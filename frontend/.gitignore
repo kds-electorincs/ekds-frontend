@@ -26,3 +26,13 @@ dist-ssr
 # Next.js
 .next
 *.env
+.next/
+
+.next/
+
+.next/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

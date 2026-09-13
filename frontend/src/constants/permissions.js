@@ -19,7 +19,7 @@ export const PERMISSIONS = {
 
 export const ROLE_PERMISSIONS = {
   [ROLES.SUPER_ADMIN]: Object.values(PERMISSIONS),
-  'ADMIN': Object.values(PERMISSIONS),
+  'ADMIN': Object.values(PERMISSIONS).filter(p => p !== PERMISSIONS.MANAGE_STAFF),
   
   [ROLES.PRODUCT_MANAGER]: [
     PERMISSIONS.VIEW_DASHBOARD,

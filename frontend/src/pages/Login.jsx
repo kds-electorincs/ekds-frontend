@@ -9,6 +9,7 @@ import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-materi
 import notification from '../utils/notification';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../constants/roles';
+import BrandLogo from '../components/common/BrandLogo';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -58,14 +59,15 @@ const Login = () => {
 
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-      <Paper elevation={0} sx={{ p: 4, width: '100%', maxWidth: 450, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
+      <Paper elevation={0} sx={{ p: 4, width: '100%', maxWidth: 450, borderRadius: 3, border: '1px solid #E2ECF5', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main', mb: 1 }}>
+          <BrandLogo sx={{ mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', mb: 0.5 }}>
             Welcome Back
           </Typography>
-          <Typography color="text.secondary">
-            Login to manage your inventory and orders
+          <Typography variant="body2" color="text.secondary">
+            Sign in to your e-commerce account &amp; portal
           </Typography>
         </Box>
 

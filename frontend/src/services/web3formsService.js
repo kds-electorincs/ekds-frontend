@@ -17,10 +17,10 @@ const WEB3FORMS_URL = 'https://api.web3forms.com/submit';
  * @returns {Promise<boolean>} True if submission succeeded, false otherwise.
  */
 export const submitToWeb3Forms = async ({ subject, formData, fromName }) => {
-  const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY;
+  const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY || '5879434d-37a4-4a85-8507-144182ea914a';
 
-  if (!accessKey || accessKey === 'your_web3forms_access_key') {
-    console.warn('[Web3Forms] Access key is missing or set to placeholder in environment variables.');
+  if (!accessKey) {
+    console.warn('[Web3Forms] Access key is missing.');
   }
 
   const payload = {

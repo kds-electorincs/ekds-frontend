@@ -119,41 +119,69 @@ const Contact = () => {
               Contact Information
             </Typography>
 
-            <Stack spacing={3}>
-              <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid #E2ECF5', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#EDF4FA', color: 'primary.main' }}>
-                  <PhoneIcon />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Phone & Sales Hotline</Typography>
-                  <Typography variant="body2" color="text.secondary">+91 22 8900 4321</Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">Mon - Sat: 9:00 - 19:00 IST</Typography>
-                </Box>
-              </Paper>
+              <Stack spacing={3}>
+                <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid #E2ECF5', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#EDF4FA', color: 'primary.main' }}>
+                    <PhoneIcon />
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Phone & Sales Hotline</Typography>
+                    <Typography 
+                      component="a" 
+                      href="tel:+919925801333" 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary', textDecoration: 'none', fontWeight: 600, '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+                    >
+                      +91 99258 01333
+                    </Typography>
+                    <Typography 
+                      component="a" 
+                      href="tel:+919925001333" 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary', textDecoration: 'none', fontWeight: 600, '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+                    >
+                      +91 99250 01333
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>Mon - Sat: 9:00 - 19:00 IST</Typography>
+                  </Box>
+                </Paper>
 
-              <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid #E2ECF5', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#EDF4FA', color: 'primary.main' }}>
-                  <EmailIcon />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Email Inquiries</Typography>
-                  <Typography variant="body2" color="text.secondary">sales@kdselectronics.com</Typography>
-                  <Typography variant="body2" color="text.secondary">support@kdselectronics.com</Typography>
-                </Box>
-              </Paper>
+                <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid #E2ECF5', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#EDF4FA', color: 'primary.main' }}>
+                    <EmailIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Email Inquiries</Typography>
+                    <Typography 
+                      component="a" 
+                      href="mailto:sales@kdselectronics.com" 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary', display: 'block', textDecoration: 'none', fontWeight: 600, '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+                    >
+                      sales@kdselectronics.com
+                    </Typography>
+                  </Box>
+                </Paper>
 
-              <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid #E2ECF5', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#EDF4FA', color: 'primary.main' }}>
-                  <LocationIcon />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Corporate Headquarters</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Industrial Electronics Hub, Plot 42, MIDC Andheri East, Mumbai, MH, 400093
-                  </Typography>
-                </Box>
-              </Paper>
-            </Stack>
+                <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid #E2ECF5', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#EDF4FA', color: 'primary.main' }}>
+                    <LocationIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Corporate Location</Typography>
+                    <Typography 
+                      component="a" 
+                      href="https://maps.app.goo.gl/V5H9xHWCKsWJbaMh8" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary', display: 'block', textDecoration: 'none', lineHeight: 1.5, '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+                    >
+                      K&DS Electronic Limited, MM Enterprise, Maruti Munchies, 7- Mani nagar, 7, Maninagar Main Rd, near Ashok garden, Mavadi Plot, Rajkot, Gujarat 360004
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Stack>
           </Grid>
 
           {/* Right Side: Contact Form */}

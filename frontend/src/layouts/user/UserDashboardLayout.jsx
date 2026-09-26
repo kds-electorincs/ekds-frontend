@@ -17,6 +17,7 @@ import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-rout
 import { useAuth } from '../../context/AuthContext';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
+import FloatingWhatsAppButton from '../../components/common/FloatingWhatsAppButton';
 
 const UserDashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -263,6 +264,7 @@ const UserDashboardLayout = () => {
       )}
 
       <Footer />
+      <FloatingWhatsAppButton />
     </Box>
   );
 };

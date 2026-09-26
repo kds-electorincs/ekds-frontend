@@ -51,7 +51,13 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
   
   const s3Image = resolveS3ImageUrl(product);
 
-  const stock = product.totalStock !== undefined ? product.totalStock : (product.stock || product.quantity || 0);
+  const stock = product.totalStock !== undefined && product.totalStock !== null
+    ? product.totalStock 
+    : (product.stock !== undefined && product.stock !== null
+        ? product.stock 
+        : (product.quantity !== undefined && product.quantity !== null
+            ? product.quantity 
+            : (product.currentQuantity !== undefined && product.currentQuantity !== null ? product.currentQuantity : 0)));
   const categoryLabel = typeof product.category === 'object' ? product.category?.name : (product.category || 'Industrial Part');
   const description = product.description || product.shortDescription || 'Certified precision electronic component engineered for enterprise applications.';
   const rating = product.rating || 4.8;
@@ -197,9 +203,9 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
                 <Typography variant="caption" sx={{ color: '#CBD5E1' }}>•</Typography>
                 <Chip label={categoryLabel} size="small" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 700, bgcolor: '#EDF4FA', color: '#243A5E' }} />
                 {stock > 0 ? (
-                  <Chip label="In Stock" size="small" color="success" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 800 }} />
+                  <Chip label={`In Stock: ${stock}`} size="small" color="success" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 800 }} />
                 ) : (
-                  <Chip label="Lead 5 Days" size="small" color="warning" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 800 }} />
+                  <Chip label="Out of Stock" size="small" color="error" sx={{ height: 20, fontSize: '0.675rem', fontWeight: 800 }} />
                 )}
               </Box>
 
@@ -351,9 +357,9 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
             </Box>
           )}
           <Chip
-            label={stock > 0 ? 'In Stock' : 'Lead 5 Days'}
+            label={stock > 0 ? `In Stock: ${stock}` : 'Out of Stock'}
             size="small"
-            color={stock > 0 ? "success" : "warning"}
+            color={stock > 0 ? "success" : "error"}
             sx={{
               position: 'absolute',
               bottom: 10,
@@ -479,7 +485,7 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
                   </Box>
                 )}
               </Box>
-              <Chip label={stock > 0 ? '🟢 In Stock - Immediate Dispatch' : '🟠 Backordered'} sx={{ width: '100%', fontWeight: 700, bgcolor: '#EDF4FA', mt: 2 }} />
+              <Chip label={stock > 0 ? `🟢 In Stock: ${stock} units available` : '🔴 Out of Stock'} sx={{ width: '100%', fontWeight: 700, bgcolor: '#EDF4FA', mt: 2 }} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 7 }}>

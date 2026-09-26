@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Box, Container, Grid, Typography, Link, Divider, Stack, IconButton, Chip, InputBase, Button 
+import {
+  Box, Container, Grid, Typography, Link, Divider, Stack, IconButton, Chip, InputBase, Button
 } from '@mui/material';
-import { 
-  Phone as PhoneIcon, 
-  Email as EmailIcon, 
-  LocationOn as LocationIcon, 
-  VerifiedUser as ShieldIcon, 
-  LocalShipping as ShippingIcon, 
-  HeadsetMic as SupportIcon, 
+import {
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  LocationOn as LocationIcon,
+  VerifiedUser as ShieldIcon,
+  LocalShipping as ShippingIcon,
+  HeadsetMic as SupportIcon,
   Lock as LockIcon,
   Facebook as FacebookIcon,
   Twitter as TwitterIcon,
@@ -33,13 +33,13 @@ const Footer = () => {
   };
 
   return (
-    <Box 
-      component="footer" 
-      sx={{ 
-        background: 'linear-gradient(180deg, #0F172A 0%, #090D16 100%)', 
-        color: '#ffffff', 
-        pt: 8, 
-        pb: 4, 
+    <Box
+      component="footer"
+      sx={{
+        background: 'linear-gradient(180deg, #0F172A 0%, #090D16 100%)',
+        color: '#ffffff',
+        pt: 8,
+        pb: 4,
         borderTop: '1px solid rgba(143, 182, 216, 0.2)',
         position: 'relative'
       }}
@@ -69,11 +69,11 @@ const Footer = () => {
             </Typography>
           </Box>
 
-          <Box 
-            component="form" 
+          <Box
+            component="form"
             onSubmit={handleSubscribe}
-            sx={{ 
-              display: 'flex', 
+            sx={{
+              display: 'flex',
               width: { xs: '100%', md: 'auto' },
               minWidth: { md: 400 },
               gap: 1,
@@ -127,7 +127,7 @@ const Footer = () => {
               </Box>
             </Box>
           </Grid>
-          
+
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ p: 1.5, borderRadius: 2.5, bgcolor: 'rgba(143, 182, 216, 0.15)', color: '#8FB6D8', border: '1px solid rgba(143, 182, 216, 0.3)' }}>
@@ -169,7 +169,7 @@ const Footer = () => {
       {/* 2. Main Navigation & Information Directory */}
       <Container maxWidth="lg">
         <Grid container spacing={4} sx={{ mb: 6 }}>
-          
+
           {/* Brand Info & Summary */}
           <Grid size={{ xs: 12, md: 4 }}>
             <BrandLogo light sx={{ mb: 2.5 }} />
@@ -177,16 +177,24 @@ const Footer = () => {
               KDS Electronics is a premier franchised distributor of active, passive, and electromechanical components serving electronics OEMs, contract manufacturers, and research institutions worldwide.
             </Typography>
             <Stack direction="row" spacing={1}>
-              <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}>
+              <IconButton 
+                component="a" 
+                href="https://www.linkedin.com/company/kds-electronics/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                size="small" 
+                sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}
+              >
                 <LinkedInIcon fontSize="small" />
               </IconButton>
-              <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}>
-                <TwitterIcon fontSize="small" />
-              </IconButton>
-              <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}>
-                <FacebookIcon fontSize="small" />
-              </IconButton>
-              <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}>
+              <IconButton 
+                component="a" 
+                href="https://www.instagram.com/kds.electronics" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                size="small" 
+                sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}
+              >
                 <InstagramIcon fontSize="small" />
               </IconButton>
             </Stack>
@@ -263,9 +271,24 @@ const Footer = () => {
             <Stack spacing={2}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <PhoneIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
-                <Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Sales Hotline</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>+91 22 8900 4321</Typography>
+                  <Typography
+                    component="a"
+                    href="tel:+919925801333"
+                    variant="body2"
+                    sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
+                  >
+                    +91 99258 01333
+                  </Typography>
+                  <Typography
+                    component="a"
+                    href="tel:+919925001333"
+                    variant="body2"
+                    sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
+                  >
+                    +91 99250 01333
+                  </Typography>
                 </Box>
               </Box>
 
@@ -273,16 +296,30 @@ const Footer = () => {
                 <EmailIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
                 <Box>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Inquiries</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>sales@kdselectronics.com</Typography>
+                  <Typography
+                    component="a"
+                    href="mailto:sales@kdselectronics.com"
+                    variant="body2"
+                    sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
+                  >
+                    sales@kdselectronics.com
+                  </Typography>
                 </Box>
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <LocationIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Headquarters</Typography>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', display: 'block' }}>
-                    Industrial Electronics Complex, Mumbai, MH, 400093
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Location</Typography>
+                  <Typography
+                    component="a"
+                    href="https://maps.app.goo.gl/V5H9xHWCKsWJbaMh8"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="caption"
+                    sx={{ color: 'rgba(255,255,255,0.8)', display: 'block', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
+                  >
+                    K&DS Electronic Limited, MM Enterprise, Maruti Munchies, 7- Mani nagar, 7, Maninagar Main Rd, near Ashok garden, Mavadi Plot, Rajkot, Gujarat 360004
                   </Typography>
                 </Box>
               </Box>

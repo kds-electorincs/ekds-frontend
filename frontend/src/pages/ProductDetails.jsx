@@ -120,12 +120,18 @@ const ProductDetails = () => {
 
   // Section 8.5 Stock Display Logic
   const renderStockInfo = (prod) => {
-    if ((prod?.totalStock !== undefined ? prod.totalStock : (prod?.stock || 0)) > 0) {
-      return `${prod.totalStock ?? prod.stock} Units immediately available`;
+    if (!prod) return 'Stock unavailable';
+    const totalStock = prod.totalStock !== undefined ? prod.totalStock : (prod.stock !== undefined ? prod.stock : prod.quantity);
+    if (totalStock !== undefined && totalStock !== null) {
+      if (totalStock > 0) {
+        return `In Stock: ${totalStock} units available`;
+      } else {
+        return 'Out of Stock';
+      }
     } else if (prod?.restockLeadDays != null) {
       return prod.restockLeadDays === 0 ? 'Ships same day' : `Ships in ${prod.restockLeadDays} days`;
     }
-    return 'Contact for availability';
+    return 'Stock unavailable';
   };
   const stockText = renderStockInfo(product);
 
@@ -242,7 +248,7 @@ const ProductDetails = () => {
                   <MemoryIcon sx={{ position: 'absolute', color: '#94A3B8', fontSize: 80, opacity: 0.7 }} />
                 </Box>
               )}
-              <Chip label={stock > 0 ? "🟢 READY TO DISPATCH" : (product.restockLeadDays != null ? `🟠 SHIPS IN ${product.restockLeadDays} DAYS` : "🟠 CONTACT FOR AVAILABILITY")} sx={{ position: 'absolute', bottom: 12, left: 12, fontWeight: 800, fontSize: '0.75rem', bgcolor: '#ffffff', border: '1px solid #D6E4EE' }} />
+              <Chip label={stock > 0 ? `🟢 IN STOCK: ${stock} UNITS` : (product.restockLeadDays != null ? `🟠 SHIPS IN ${product.restockLeadDays} DAYS` : "🔴 OUT OF STOCK")} sx={{ position: 'absolute', bottom: 12, left: 12, fontWeight: 800, fontSize: '0.75rem', bgcolor: '#ffffff', border: '1px solid #D6E4EE' }} />
             </Box>
 
             {/* Thumbnails Strip */}

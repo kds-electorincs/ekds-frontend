@@ -282,31 +282,36 @@ const ProductDetails = () => {
             {/* Technical Document Action Downloads */}
             <Box sx={{ mt: 3, p: 2, bgcolor: '#EDF4FA', borderRadius: 1, border: '1px solid #D6E4EE', display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase' }}>
-                Engineering Datasheets & CAD Footprints
+                Engineering Documents & CAD Footprints
               </Typography>
-              {(product.documents && product.documents.length > 0) ? (
-                product.documents.map((doc, idx) => (
-                  <Button 
-                    key={doc.id || idx}
-                    component="a"
-                    href={`https://d1sswqar085ync.cloudfront.net/${doc.objectKey}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    variant="outlined" 
-                    size="small" 
-                    startIcon={<DownloadIcon />} 
-                    sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
-                  >
-                    Download {doc.displayName || doc.attrKey || 'Official Datasheet'} (PDF)
-                  </Button>
-                ))
+              {(product.documents && product.documents.filter(d => d.objectKey && d.objectKey !== 'undefined').length > 0) ? (
+                product.documents.filter(d => d.objectKey && d.objectKey !== 'undefined').map((doc, idx) => {
+                  const docUrl = doc.objectKey?.startsWith('http') 
+                    ? doc.objectKey 
+                    : `${CDN_BASE}/${doc.objectKey}`;
+                  return (
+                    <Button 
+                      key={doc.id || idx}
+                      component="a"
+                      href={docUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      variant="outlined" 
+                      size="small" 
+                      startIcon={<DownloadIcon />} 
+                      sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
+                    >
+                      Download {doc.displayName || doc.attrKey || 'Official Datasheet'} (PDF)
+                    </Button>
+                  );
+                })
               ) : (
                 <Button 
                   variant="outlined" 
                   size="small" 
                   startIcon={<DownloadIcon />} 
-                  onClick={() => notification.info('Generating PDF datasheet export...')}
-                  sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left' }}
+                  onClick={() => notification.info('Datasheet document has not been added to this product by the admin yet. It will be available soon.')}
+                  sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
                 >
                   Download Official OEM Datasheet (PDF)
                 </Button>
@@ -506,11 +511,25 @@ const ProductDetails = () => {
                                 <TableRow key={attribute.id}>
                                   <TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>{attribute.attrKey}</TableCell>
                                   <TableCell sx={{ fontWeight: 600 }}>
-                                    {doc ? (
-                                      <Box component="a" href={`https://d1sswqar085ync.cloudfront.net/${doc.objectKey}`} target="_blank" rel="noreferrer" sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                                    {doc && doc.objectKey && doc.objectKey !== 'undefined' ? (
+                                      <Box 
+                                        component="a" 
+                                        href={doc.objectKey?.startsWith('http') ? doc.objectKey : `${CDN_BASE}/${doc.objectKey}`} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                                      >
                                         <DownloadIcon fontSize="small" /> {doc.displayName || 'Download File'}
                                       </Box>
-                                    ) : '—'}
+                                    ) : (
+                                      <Box 
+                                        component="span"
+                                        onClick={() => notification.info('Document has not been uploaded by admin yet. It will be available soon.')}
+                                        sx={{ color: 'text.secondary', cursor: 'pointer', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                                      >
+                                        <DownloadIcon fontSize="small" /> Document not added yet
+                                      </Box>
+                                    )}
                                   </TableCell>
                                 </TableRow>
                               );

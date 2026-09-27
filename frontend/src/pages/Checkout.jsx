@@ -14,6 +14,8 @@ import { VerifiedUser as SecurityIcon, LocalShipping as ShippingIcon } from '@mu
 import { formatTotal } from '../utils/priceUtils';
 import { orderService, userService } from '../services/apiServices';
 
+const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d3qrireo7rmkke.cloudfront.net';
+
 const steps = ['Corporate Shipping Destination', 'Order Verification & Terms', 'Gateway Authorization'];
 
 const Checkout = () => {
@@ -242,7 +244,7 @@ const Checkout = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       {item.primaryImageUrl && (
                         <Box sx={{ width: 48, height: 38, border: '1px solid #E2ECF5', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 0.5, bgcolor: '#ffffff' }}>
-                          <Box component="img" src={`https://d1sswqar085ync.cloudfront.net/${item.primaryImageUrl}`} alt={item.name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                          <Box component="img" src={item.primaryImageUrl?.startsWith('http') ? item.primaryImageUrl : `${CDN_BASE}/${item.primaryImageUrl}`} alt={item.name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                         </Box>
                       )}
                       <Box>

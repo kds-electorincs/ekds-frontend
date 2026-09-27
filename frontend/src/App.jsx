@@ -1,6 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ScrollToTop from './components/common/ScrollToTop';
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
@@ -11,6 +12,7 @@ import UserDashboardLayout from './layouts/user/UserDashboardLayout';
 import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import PrivacyPolicy from './pages/PrivacyPolicyPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -87,6 +89,7 @@ const PermissionRoute = ({ permission, children }) => {
 function App() {
   return (
     <>
+      <ScrollToTop />
       <Routes>
         {/* PUBLIC ROUTES (Storefront) */}
         <Route element={<PublicLayout />}>
@@ -95,6 +98,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           
           {/* Customer Auth */}
           <Route path="/login" element={<Login />} />

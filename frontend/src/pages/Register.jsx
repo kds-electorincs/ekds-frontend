@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, TextField, Button, Link, Grid, ToggleButton, ToggleButtonGroup, Divider } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Link, Grid, ToggleButton, ToggleButtonGroup, Divider, FormControlLabel, Checkbox, FormHelperText } from '@mui/material';
 import GoogleLoginButton from '../components/auth/GoogleLoginButton';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
@@ -23,6 +23,7 @@ const schema = yup.object({
     is: 'company',
     then: (schema) => schema.required('Tax/VAT ID is required'),
   }),
+  dpdpConsent: yup.boolean().oneOf([true], 'You must accept the Privacy Policy & Data Processing Notice'),
 }).required();
 
 const Register = () => {
@@ -31,9 +32,9 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { regType: 'individual' }
+    defaultValues: { regType: 'individual', dpdpConsent: false }
   });
 
   const handleRegTypeChange = (event, newType) => {
@@ -162,6 +163,31 @@ const Register = () => {
                 error={!!errors.confirmPassword}
                 helperText={errors.confirmPassword?.message}
               />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <Controller
+                name="dpdpConsent"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={<Checkbox {...field} checked={!!field.value} color="primary" />}
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        I agree to the processing of my personal data under the{' '}
+                        <Link component={RouterLink} to="/privacy-policy" target="_blank" underline="always" color="primary">
+                          DPDP Act 2023 &amp; Privacy Policy
+                        </Link>.
+                      </Typography>
+                    }
+                  />
+                )}
+              />
+              {errors.dpdpConsent && (
+                <FormHelperText error sx={{ ml: 1 }}>
+                  {errors.dpdpConsent.message}
+                </FormHelperText>
+              )}
             </Grid>
           </Grid>
 

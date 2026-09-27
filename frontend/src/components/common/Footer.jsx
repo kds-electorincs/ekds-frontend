@@ -254,8 +254,11 @@ const Footer = () => {
               <Link component={RouterLink} to="/about" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
                 About Us
               </Link>
+              <Link component={RouterLink} to="/privacy-policy" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
+                Privacy Policy &amp; DPDP Notice
+              </Link>
               <Link component={RouterLink} to="/about#quality" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Quality & Compliance
+                Quality &amp; Compliance
               </Link>
               <Link component={RouterLink} to="/contact" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
                 Corporate Address

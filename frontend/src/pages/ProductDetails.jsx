@@ -284,38 +284,48 @@ const ProductDetails = () => {
               <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase' }}>
                 Engineering Documents & CAD Footprints
               </Typography>
-              {(product.documents && product.documents.filter(d => d.objectKey && d.objectKey !== 'undefined').length > 0) ? (
-                product.documents.filter(d => d.objectKey && d.objectKey !== 'undefined').map((doc, idx) => {
-                  const docUrl = doc.objectKey?.startsWith('http') 
-                    ? doc.objectKey 
-                    : `${CDN_BASE}/${doc.objectKey}`;
-                  return (
-                    <Button 
-                      key={doc.id || idx}
-                      component="a"
-                      href={docUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      variant="outlined" 
-                      size="small" 
-                      startIcon={<DownloadIcon />} 
-                      sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
-                    >
-                      Download {doc.displayName || doc.attrKey || 'Official Datasheet'} (PDF)
-                    </Button>
-                  );
-                })
-              ) : (
-                <Button 
-                  variant="outlined" 
-                  size="small" 
-                  startIcon={<DownloadIcon />} 
-                  onClick={() => notification.info('Datasheet document has not been added to this product by the admin yet. It will be available soon.')}
-                  sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
-                >
-                  Download Official OEM Datasheet (PDF)
-                </Button>
-              )}
+              {(() => {
+                const validDocs = (product.documents || []).filter(d => {
+                  const key = d.url || d.objectKey;
+                  return key && key !== 'undefined' && key !== 'null';
+                });
+
+                if (validDocs.length > 0) {
+                  return validDocs.map((doc, idx) => {
+                    const rawKey = doc.url || doc.objectKey;
+                    const docUrl = rawKey.startsWith('http') 
+                      ? rawKey 
+                      : `${CDN_BASE}/${rawKey}`;
+                    return (
+                      <Button 
+                        key={doc.id || idx}
+                        component="a"
+                        href={docUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        variant="outlined" 
+                        size="small" 
+                        startIcon={<DownloadIcon />} 
+                        sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
+                      >
+                        Download {doc.displayName || doc.attrKey || 'Official Datasheet'} (PDF)
+                      </Button>
+                    );
+                  });
+                }
+
+                return (
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    startIcon={<DownloadIcon />} 
+                    onClick={() => notification.info('Datasheet document has not been added to this product by the admin yet. It will be available soon.')}
+                    sx={{ bgcolor: '#ffffff', fontWeight: 700, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}
+                  >
+                    Download Official OEM Datasheet (PDF)
+                  </Button>
+                );
+              })()}
             </Box>
           </Grid>
 
@@ -346,6 +356,59 @@ const ProductDetails = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6, fontSize: '0.9375rem' }}>
               {description}
             </Typography>
+
+            {/* Packaging Options Selection */}
+            {packagingOptions.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', mb: 1 }}>
+                  Select Packaging Option
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                  {packagingOptions.map((pkg, idx) => {
+                    const isSelected = selectedPkgIdx === idx;
+                    const pkgTypeLabel = pkg.packagingType || pkg.type || `Option ${idx + 1}`;
+                    const pkgStock = pkg.currentQuantity ?? pkg.quantity ?? 0;
+                    return (
+                      <Paper
+                        key={pkg.id || idx}
+                        elevation={0}
+                        onClick={() => {
+                          setSelectedPkgIdx(idx);
+                          const newMoq = pkg.minOrderQuantity ?? product.minOrderQuantity ?? 1;
+                          setQuantity(newMoq);
+                        }}
+                        sx={{
+                          p: 1.5,
+                          px: 2,
+                          cursor: 'pointer',
+                          border: '2px solid',
+                          borderColor: isSelected ? 'primary.main' : '#D6E4EE',
+                          bgcolor: isSelected ? '#EDF4FA' : '#ffffff',
+                          borderRadius: 1.5,
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            bgcolor: isSelected ? '#EDF4FA' : '#f8fafc'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isSelected ? 'primary.main' : 'text.primary' }}>
+                            {pkgTypeLabel.replace('_', ' ')}
+                          </Typography>
+                          {isSelected && (
+                            <Chip label="SELECTED" size="small" color="primary" sx={{ height: 18, fontSize: '0.625rem', fontWeight: 800 }} />
+                          )}
+                        </Box>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                          MOQ: {pkg.minOrderQuantity ?? 1} units • Stock: {pkgStock > 0 ? `${pkgStock} available` : 'In Stock'}
+                        </Typography>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Box>
+            )}
 
             {/* B2B Volume Price Breakdown Table */}
             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', mb: 1 }}>
@@ -511,25 +574,32 @@ const ProductDetails = () => {
                                 <TableRow key={attribute.id}>
                                   <TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>{attribute.attrKey}</TableCell>
                                   <TableCell sx={{ fontWeight: 600 }}>
-                                    {doc && doc.objectKey && doc.objectKey !== 'undefined' ? (
-                                      <Box 
-                                        component="a" 
-                                        href={doc.objectKey?.startsWith('http') ? doc.objectKey : `${CDN_BASE}/${doc.objectKey}`} 
-                                        target="_blank" 
-                                        rel="noreferrer" 
-                                        sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                                      >
-                                        <DownloadIcon fontSize="small" /> {doc.displayName || 'Download File'}
-                                      </Box>
-                                    ) : (
-                                      <Box 
-                                        component="span"
-                                        onClick={() => notification.info('Document has not been uploaded by admin yet. It will be available soon.')}
-                                        sx={{ color: 'text.secondary', cursor: 'pointer', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                                      >
-                                        <DownloadIcon fontSize="small" /> Document not added yet
-                                      </Box>
-                                    )}
+                                    {(() => {
+                                      const key = doc?.url || doc?.objectKey;
+                                      if (key && key !== 'undefined' && key !== 'null') {
+                                        const href = key.startsWith('http') ? key : `${CDN_BASE}/${key}`;
+                                        return (
+                                          <Box 
+                                            component="a" 
+                                            href={href} 
+                                            target="_blank" 
+                                            rel="noreferrer" 
+                                            sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                                          >
+                                            <DownloadIcon fontSize="small" /> {doc.displayName || 'Download File'}
+                                          </Box>
+                                        );
+                                      }
+                                      return (
+                                        <Box 
+                                          component="span"
+                                          onClick={() => notification.info('Document has not been uploaded by admin yet. It will be available soon.')}
+                                          sx={{ color: 'text.secondary', cursor: 'pointer', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                                        >
+                                          <DownloadIcon fontSize="small" /> Document not added yet
+                                        </Box>
+                                      );
+                                    })()}
                                   </TableCell>
                                 </TableRow>
                               );

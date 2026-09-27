@@ -403,6 +403,20 @@ export const searchService = {
   getCategoryFacets: async (slug, params) => await axiosInstance.get(`/search/categories/${slug}/facets`, { params }),
 };
 
+// ==========================================
+// DPDP Act 2023 / Privacy Compliance Services
+// ==========================================
+export const privacyService = {
+  recordConsent: async (consentData) => await axiosInstance.post('/privacy/consent', consentData),
+  getConsentHistory: async () => await axiosInstance.get('/privacy/consent/my-history'),
+  withdrawConsent: async (purpose) => await axiosInstance.post('/privacy/consent/withdraw', { purpose }),
+  exportMyData: async () => await axiosInstance.get('/privacy/export-my-data', { responseType: 'blob' }),
+  requestDataErasure: async (reason) => await axiosInstance.post('/privacy/request-erasure', { reason }),
+  getErasureStatus: async () => await axiosInstance.get('/privacy/erasure-status'),
+  submitGrievance: async (grievanceData) => await axiosInstance.post('/privacy/grievance', grievanceData),
+};
+
+
 
 
 

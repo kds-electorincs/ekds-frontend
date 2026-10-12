@@ -288,7 +288,7 @@ const Quotations = () => {
                           <TableCell>
                             {line.matchedProduct ? (
                               <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block' }}>
-                                {line.matchedProduct.partNumber || line.matchedProduct.name}
+                                {line.matchedProduct.partNumber || line.matchedProduct.mpn || line.matchedProduct.sku || line.matchedProduct.name}
                               </Typography>
                             ) : (
                               <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>

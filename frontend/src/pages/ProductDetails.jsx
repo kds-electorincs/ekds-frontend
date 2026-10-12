@@ -26,7 +26,7 @@ const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cl
 
 const ProductDetails = () => {
   const { id } = useParams();
-  useNavigate(); // kept for potential future use
+  useNavigate();
   const { addToCart } = useCart();
   const { currency } = useCurrency();
   
@@ -35,7 +35,7 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [selectedPkgIdx, setSelectedPkgIdx] = useState(0); // selected packaging option index
+  const [selectedPkgIdx, setSelectedPkgIdx] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
@@ -52,8 +52,6 @@ const ProductDetails = () => {
         try {
           prod = await productPublicService.getProduct(id, { currency: requestedCurrency });
         } catch (priceErr) {
-          // Currency guide §8: 503 = no live FX rate for this currency yet
-          // (transient). Fall back to INR rather than failing the whole page.
           if (priceErr?.response?.status === 503 && requestedCurrency !== 'INR') {
             prod = await productPublicService.getProduct(id, { currency: 'INR' });
           } else {
@@ -78,7 +76,6 @@ const ProductDetails = () => {
           setSelectedPkgIdx(0);
         }
 
-        // Fetch related series inventory
         try {
           const relatedRes = await productPublicService.listProducts({ limit: 4, size: 4 });
           const relatedItems = relatedRes?.content || relatedRes?.data?.content || relatedRes?.data || [];
@@ -118,7 +115,6 @@ const ProductDetails = () => {
   const stock = product.totalStock !== undefined ? product.totalStock : (product.stock || product.quantity || 0);
   const description = product.description || product.shortDescription || 'Certified precision electronic component engineered for industrial hardware applications.';
 
-  // Section 8.5 Stock Display Logic
   const renderStockInfo = (prod) => {
     if (!prod) return 'Stock unavailable';
     const totalStock = prod.totalStock !== undefined ? prod.totalStock : (prod.stock !== undefined ? prod.stock : prod.quantity);
@@ -142,28 +138,226 @@ const ProductDetails = () => {
     return `${CDN_BASE}/${raw.replace(/^\//, '')}`;
   };
 
+  // Universal attribute value lookup across all backend schema variants
+  const getAttrValue = (prod, key) => {
+    if (!prod || !key) return null;
+    const kLower = String(key).trim().toLowerCase();
+
+    for (const pKey of Object.keys(prod)) {
+      if (pKey.toLowerCase() === kLower && prod[pKey] != null && typeof prod[pKey] !== 'object') {
+        return prod[pKey];
+      }
+    }
+
+    const mapObjects = [
+      prod.specs, prod.specifications, prod.attributes, prod.customAttributes, 
+      prod.attributesMap, prod.meta?.attributes, prod.meta?.specs, prod.details, prod.parameters
+    ].filter(m => m && typeof m === 'object' && !Array.isArray(m));
+
+    for (const mapObj of mapObjects) {
+      for (const [mKey, mVal] of Object.entries(mapObj)) {
+        if (mKey.toLowerCase() === kLower && mVal != null) {
+          return typeof mVal === 'object' ? (mVal.value || mVal.val || mVal.attrValue || mVal.name || JSON.stringify(mVal)) : mVal;
+        }
+      }
+    }
+
+    const arrayLists = [
+      prod.attributes, prod.attributeValues, prod.specs, prod.specifications, 
+      prod.customAttributes, prod.details, prod.meta?.attributes
+    ].filter(a => Array.isArray(a));
+
+    for (const list of arrayLists) {
+      for (const item of list) {
+        if (!item) continue;
+        if (typeof item === 'string') {
+          if (item.includes(':')) {
+            const [iK, iV] = item.split(':');
+            if (iK.trim().toLowerCase() === kLower) return iV.trim();
+          }
+          continue;
+        }
+        const itemKey = item.attrKey || item.attributeKey || item.name || item.key || item.attributeName || item.attribute?.name || item.attribute?.attrKey || item.label;
+        if (itemKey && String(itemKey).trim().toLowerCase() === kLower) {
+          const resVal = item.attrValue || item.attributeValue || item.value || item.val || item.displayValue || item.attributeValue?.value || item.attributeValue?.name;
+          if (resVal != null) return resVal;
+        }
+        // Flat object in array case: e.g. [{ "Color": "Silver" }]
+        if (typeof item === 'object' && !itemKey) {
+          for (const [flatK, flatV] of Object.entries(item)) {
+            if (flatK.toLowerCase() === kLower && flatV != null) return flatV;
+          }
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // Completely dynamic attributes extractor (no static rows, no segment headers)
+  const getAllDynamicAttributes = (prod, cat) => {
+    if (!prod) return [];
+    const list = [];
+    const seen = new Set();
+
+    const skipKeys = [
+      'id', '_id', 'name', 'title', 'slug', 'description', 'shortdescription', 
+      'price', 'stock', 'images', 'image', 'primaryimageurl', 'primaryimage', 
+      'packagingoptions', 'pricebreaks', 'frompricescaled', 'pricescale', 
+      'currency', 'minorderquantity', 'ordermultiple', 'restockleaddays', 
+      'categoryid', 'active', 'documents', 'totalstock', 'brand', 
+      'manufacturer', 'partnumber', 'mpn', 'sku', 'createdat', 'updatedat'
+    ];
+
+    const add = (rawKey, rawVal, unit = '') => {
+      if (!rawKey || rawVal == null || rawVal === '') return;
+      const kStr = String(rawKey).trim();
+      const kLower = kStr.toLowerCase();
+      
+      if (skipKeys.includes(kLower)) return;
+      if (seen.has(kLower)) return;
+
+      let valStr = '';
+      if (typeof rawVal === 'object') {
+        valStr = rawVal.value || rawVal.val || rawVal.name || rawVal.attrValue || rawVal.attributeValue || rawVal.displayValue || JSON.stringify(rawVal);
+      } else {
+        valStr = String(rawVal);
+      }
+      valStr = valStr.trim().replace(/\.$/, ''); // remove trailing dot if present
+      if (!valStr || valStr === 'undefined' || valStr === 'null') return;
+
+      seen.add(kLower);
+      list.push({ key: kStr, value: valStr, unit: unit || '' });
+    };
+
+    const parseObj = (obj) => {
+      if (!obj) return null;
+      if (typeof obj === 'string') {
+        try { return JSON.parse(obj); } catch (e) { return null; }
+      }
+      return typeof obj === 'object' ? obj : null;
+    };
+
+    // 1. Scan ALL attribute container objects & arrays on product
+    [
+      prod.specs, prod.specifications, prod.customAttributes, 
+      prod.attributesMap, prod.attributes, prod.meta?.specs, prod.meta?.attributes,
+      prod.details, prod.parameters, prod.features, prod.properties
+    ].forEach(raw => {
+      const obj = parseObj(raw) || raw;
+      if (!obj) return;
+      if (Array.isArray(obj)) {
+        obj.forEach(item => {
+          if (!item) return;
+          if (typeof item === 'string' && item.includes(':')) {
+            const [k, v] = item.split(':');
+            add(k, v);
+            return;
+          }
+          const k = item.attrKey || item.attributeKey || item.name || item.key || item.attributeName || item.attribute?.name || item.attribute?.attrKey || item.label;
+          const v = item.attrValue || item.attributeValue || item.value || item.val || item.displayValue || item.attributeValue?.value || item.attributeValue?.name;
+          const u = item.unit || item.attribute?.unit || '';
+          if (k) {
+            add(k, v, u);
+          } else if (typeof item === 'object') {
+            Object.entries(item).forEach(([flatK, flatV]) => add(flatK, flatV));
+          }
+        });
+      } else if (typeof obj === 'object') {
+        Object.entries(obj).forEach(([k, v]) => add(k, v));
+      }
+    });
+
+    // 2. Scan prod.attributeValues
+    if (Array.isArray(prod.attributeValues)) {
+      prod.attributeValues.forEach(item => {
+        if (!item) return;
+        const k = item.attribute?.name || item.attribute?.attrKey || item.attributeName || item.name || item.key;
+        const v = item.value || item.val || item.displayValue || item.attributeValue || item.attrValue;
+        const u = item.unit || item.attribute?.unit || '';
+        add(k, v, u);
+      });
+    }
+
+    // 3. Scan Category Segments (defined on category or product.category)
+    const categorySegments = cat?.segments || prod.category?.segments || prod.segments || [];
+    if (Array.isArray(categorySegments)) {
+      categorySegments.forEach(s => {
+        const segAttrs = s.attributes || s.items || s.attributeList || [];
+        if (Array.isArray(segAttrs)) {
+          segAttrs.forEach(a => {
+            const key = a.attrKey || a.attributeKey || a.name || a.title || a.key;
+            if (key) {
+              const val = getAttrValue(prod, key) || a.attrValue || a.attributeValue || a.value || a.val;
+              if (val != null && val !== '') {
+                add(key, val, a.unit);
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // 4. Complementary Token & Pattern Parser from Name/Description strings
+    const fullText = [prod.name, prod.title, prod.description, prod.shortDescription].filter(Boolean).join(' ');
+    if (fullText) {
+      // Direct "Key: Value" tokens split by delimiters
+      const parts = fullText.split(/[,;\n|]/).map(p => p.trim()).filter(Boolean);
+      parts.forEach(part => {
+        if (part.includes(':')) {
+          const [k, v] = part.split(':');
+          add(k.trim(), v.trim());
+        }
+      });
+
+      // Regex pattern scanning across fullText for standard electronic attributes
+      const capMatch = fullText.match(/\b\d+(\.\d+)?\s*(nF|uF|µF|pF|mF|Farad)\b/i);
+      if (capMatch) add('Capacitance', capMatch[0]);
+
+      const voltMatch = fullText.match(/\b\d+(\.\d+)?\s*V(DC|AC)?\b/i);
+      if (voltMatch) add('Voltage Rating', voltMatch[0]);
+
+      const pkgMatch = fullText.match(/\b(0402|0603|0805|1206|1210|1812|2220|SOT-23|TO-220|DIP-8|SOIC-8)\b/i);
+      if (pkgMatch) add('Package / Case', pkgMatch[0]);
+
+      const dielectMatch = fullText.match(/\b(Y5V|X7R|X5R|C0G|NP0|Z5U)\b/i);
+      if (dielectMatch) add('Dielectric', dielectMatch[0].toUpperCase());
+
+      const colorMatch = fullText.match(/\b(Silver|Gold|Black|White|Blue|Red|Green|Gray|Grey)\b/i);
+      if (colorMatch) add('Color', colorMatch[0].charAt(0).toUpperCase() + colorMatch[0].slice(1).toLowerCase());
+
+      const mountMatch = fullText.match(/\b(Surface Mount|SMD|SMT|Through Hole)\b/i);
+      if (mountMatch) add('Mounting Type', mountMatch[0]);
+
+      const tolMatch = fullText.match(/±?\d+(\.\d+)?%/);
+      if (tolMatch) add('Tolerance', tolMatch[0]);
+    }
+
+    // 5. Scan direct non-system scalar properties on product object
+    Object.entries(prod).forEach(([k, v]) => {
+      if (typeof v !== 'object' && typeof v !== 'function') {
+        add(k, v);
+      }
+    });
+
+    return list;
+  };
+
   const imageArray = Array.isArray(product.images) && product.images.length > 0
     ? product.images.map(img => img.url || resolveS3Url(img.objectKey || img.url)).filter(Boolean)
     : [resolveS3Url(product.primaryImageUrl || product.image || product.imageUrl || (product.primaryImage && product.primaryImage.objectKey))].filter(Boolean);
 
   const mainImage = imageArray[activeImageIndex] || null;
 
-  // Resolve selected packaging option (may have multiple: CUT_TAPE, FULL_REEL, etc.)
   const packagingOptions = product.packagingOptions || [];
   const selectedPkg = packagingOptions[selectedPkgIdx] || packagingOptions[0] || null;
 
-  // priceScale sits at the response level (guide §2) — read it, never hardcode 10000.
   const priceScale = product.priceScale ?? 4;
   const displayCurrency = product.currency || currency || 'INR';
 
   const moq  = selectedPkg?.minOrderQuantity ?? product.minOrderQuantity ?? 1;
   const step = selectedPkg?.orderMultiple   ?? product.orderMultiple   ?? 1;
 
-  // Real field is packagingOptions[].priceBreaks (guide §5) — not "prices".
-  // Empty priceBreaks means the product isn't directly purchasable yet;
-  // "Contact us" is handled by priceUtils' formatters returning that
-  // sentinel for a null/undefined scaled value, so no synthetic tiers are
-  // fabricated here.
   const rawPriceBreaks = selectedPkg?.priceBreaks || [];
   const priceBreaks = rawPriceBreaks.map((pb) => ({
     qty: `${pb.minQuantity}+`,
@@ -171,30 +365,23 @@ const ProductDetails = () => {
     minQuantity: pb.minQuantity,
   }));
 
-  // Tier applicable to the currently selected order quantity (guide §5:
-  // highest minQuantity <= qty).
   const currentTier = getTierForQty(rawPriceBreaks, Number(quantity) || moq);
 
   const handleAddToCart = async () => {
-    // Must have a packaging option to add (packagingOptionId is the cart URL key)
     if (!selectedPkg?.id) {
       notification.warning('No packaging option available for this product.');
       return;
     }
     try {
       setAddingToCart(true);
-      // POST /api/cart/items — increments if line already exists
       await addToCart(selectedPkg.id, Number(quantity) || moq);
-      // toggleCartDrawer is called inside addToCart on success
     } catch (err) {
-      // Error toast is handled inside CartContext
       console.error('[ProductDetails] handleAddToCart failed:', err?.message);
     } finally {
       setAddingToCart(false);
     }
   };
 
-  // Stepper helpers — respects MOQ floor and orderMultiple step
   const handleQtyDown = () => {
     const next = Number(quantity) - step;
     if (next < moq) return;
@@ -218,7 +405,7 @@ const ProductDetails = () => {
 
   return (
     <Container maxWidth="lg" sx={{ pb: 10, pt: 2 }}>
-      {/* 1. Breadcrumbs Header */}
+      {/* 1. Breadcrumbs Navigation */}
       <Box sx={{ py: 2, borderBottom: '1px solid #D6E4EE', mb: 3 }}>
         <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
           <RouterLink to="/" style={{ color: '#5F86A6', textDecoration: 'none', fontWeight: 600, fontSize: '0.8125rem' }}>
@@ -233,13 +420,13 @@ const ProductDetails = () => {
         </Breadcrumbs>
       </Box>
 
-      {/* 2. Primary Product Procurement Command Area */}
-      <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderRadius: 2, mb: 4 }}>
-        <Grid container spacing={5}>
+      {/* 2. Primary Product Specification & Procurement Card (Mouser-style Layout) */}
+      <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderRadius: 2, mb: 4 }}>
+        <Grid container spacing={4}>
           
-          {/* Left Column: Image Inspection Gallery */}
+          {/* TOP LEFT: Product Image & Gallery */}
           <Grid size={{ xs: 12, md: 5 }}>
-            <Box sx={{ width: '100%', height: 380, bgcolor: '#f8fafc', border: '1px solid #D6E4EE', borderRadius: 1.5, p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, position: 'relative' }}>
+            <Box sx={{ width: '100%', height: 350, bgcolor: '#f8fafc', border: '1px solid #D6E4EE', borderRadius: 1.5, p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, position: 'relative' }}>
               {mainImage && !mainImgError ? (
                 <Box component="img" src={mainImage} alt={name} onError={() => setMainImgError(true)} sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
               ) : (
@@ -251,16 +438,16 @@ const ProductDetails = () => {
               <Chip label={stock > 0 ? `🟢 IN STOCK: ${stock} UNITS` : (product.restockLeadDays != null ? `🟠 SHIPS IN ${product.restockLeadDays} DAYS` : "🔴 OUT OF STOCK")} sx={{ position: 'absolute', bottom: 12, left: 12, fontWeight: 800, fontSize: '0.75rem', bgcolor: '#ffffff', border: '1px solid #D6E4EE' }} />
             </Box>
 
-            {/* Thumbnails Strip */}
+            {/* Gallery Thumbnails Strip */}
             {imageArray.length > 1 && (
-              <Box sx={{ display: 'flex', gap: 1.5, overflowX: 'auto', pb: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1.5, overflowX: 'auto', pb: 1, mb: 2 }}>
                 {imageArray.map((imgUrl, i) => (
                   <Box
                     key={i}
                     onClick={() => setActiveImageIndex(i)}
                     sx={{
-                      width: 72,
-                      height: 58,
+                      width: 68,
+                      height: 54,
                       borderRadius: 1,
                       border: activeImageIndex === i ? '2px solid #243A5E' : '1px solid #D6E4EE',
                       p: 0.5,
@@ -278,11 +465,85 @@ const ProductDetails = () => {
                 ))}
               </Box>
             )}
+          </Grid>
 
-            {/* Technical Document Action Downloads */}
-            <Box sx={{ mt: 3, p: 2, bgcolor: '#EDF4FA', borderRadius: 1, border: '1px solid #D6E4EE', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {/* TOP RIGHT: Product Number, Name & Mouser Row/Column Attributes Table */}
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Box sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.dark', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
+                    MFR: {typeof manufacturer === 'string' ? manufacturer : 'Industrial Partner'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.3 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>
+                      {partNumber}
+                    </Typography>
+                    <IconButton size="small" onClick={handleCopyPartNumber} sx={{ color: 'text.secondary', border: '1px solid #D6E4EE' }} aria-label="copy part number">
+                      <CopyIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mt: 0.5, mb: 1 }}>
+                    {name}
+                  </Typography>
+                </Box>
+                <Chip label="ISO 9001:2015 COMPLIANT" sx={{ bgcolor: 'primary.dark', color: 'secondary.light', fontWeight: 800, fontSize: '0.675rem' }} />
+              </Box>
+            </Box>
+
+            {/* Mouser-Style Row/Column Attributes Table */}
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #D6E4EE', borderRadius: 1.5, overflow: 'hidden' }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell colSpan={2} sx={{ bgcolor: '#243A5E', color: '#ffffff', fontWeight: 800, fontSize: '0.8125rem', py: 1, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Technical Specifications & Attributes
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(() => {
+                    const dynamicAttrs = getAllDynamicAttributes(product, category);
+                    if (dynamicAttrs.length === 0) {
+                      return (
+                        <TableRow>
+                          <TableCell colSpan={2} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                            No technical specifications added for this component yet.
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                    return dynamicAttrs.map((attr, idx) => (
+                      <TableRow key={idx} sx={{ bgcolor: idx % 2 === 0 ? '#ffffff' : '#F8FAFC', '&:hover': { bgcolor: '#F1F5F9' } }}>
+                        <TableCell sx={{ fontWeight: 700, width: '40%', color: '#475569', py: 0.9, borderRight: '1px solid #E2E8F0', textTransform: 'capitalize' }}>
+                          {attr.key}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: '#0F172A', py: 0.9 }}>
+                          <span>{attr.value}</span>
+                          {attr.unit && (
+                            <Typography component="span" sx={{ color: '#64748B', fontWeight: 600, ml: 0.75, fontSize: '0.75rem' }}>
+                              {attr.unit}
+                            </Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ));
+                  })()}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Divider sx={{ my: 1 }} />
+          </Grid>
+
+          {/* LOWER LEFT: Technical Documents & Packaging Selection (Under Image) */}
+          <Grid size={{ xs: 12, md: 5 }}>
+            {/* 1. Technical Document Action Downloads */}
+            <Box sx={{ mb: 3, p: 2, bgcolor: '#EDF4FA', borderRadius: 1.5, border: '1px solid #D6E4EE', display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase' }}>
-                Engineering Documents & CAD Footprints
+                Technical Datasheets & Documentation
               </Typography>
               {(() => {
                 const validDocs = (product.documents || []).filter(d => {
@@ -293,9 +554,7 @@ const ProductDetails = () => {
                 if (validDocs.length > 0) {
                   return validDocs.map((doc, idx) => {
                     const rawKey = doc.url || doc.objectKey;
-                    const docUrl = rawKey.startsWith('http') 
-                      ? rawKey 
-                      : `${CDN_BASE}/${rawKey}`;
+                    const docUrl = rawKey.startsWith('http') ? rawKey : `${CDN_BASE}/${rawKey}`;
                     return (
                       <Button 
                         key={doc.id || idx}
@@ -327,43 +586,14 @@ const ProductDetails = () => {
                 );
               })()}
             </Box>
-          </Grid>
 
-          {/* Center Column: Technical Identifiers & Volume Pricing */}
-          <Grid size={{ xs: 12, md: 7 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 1.5 }}>
-              <Box>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: 'secondary.dark', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
-                  MFR: {typeof manufacturer === 'string' ? manufacturer : 'Industrial Partner'}
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.3 }}>
-                  <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>
-                    {partNumber}
-                  </Typography>
-                  <IconButton size="small" onClick={handleCopyPartNumber} sx={{ color: 'text.secondary', border: '1px solid #D6E4EE' }} aria-label="copy product part number to clipboard">
-                    <CopyIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-                <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mt: 1 }}>
-                  {name}
-                </Typography>
-              </Box>
-              <Chip label="ISO 9001:2015 COMPLIANT" sx={{ bgcolor: 'primary.dark', color: 'secondary.light', fontWeight: 800, fontSize: '0.7rem' }} />
-            </Box>
-
-            <Divider sx={{ my: 2.5 }} />
-
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6, fontSize: '0.9375rem' }}>
-              {description}
-            </Typography>
-
-            {/* Packaging Options Selection */}
+            {/* 2. Packaging Options Selection */}
             {packagingOptions.length > 0 && (
-              <Box sx={{ mb: 3 }}>
+              <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', mb: 1 }}>
                   Select Packaging Option
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                   {packagingOptions.map((pkg, idx) => {
                     const isSelected = selectedPkgIdx === idx;
                     const pkgTypeLabel = pkg.packagingType || pkg.type || `Option ${idx + 1}`;
@@ -392,7 +622,7 @@ const ProductDetails = () => {
                           }
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isSelected ? 'primary.main' : 'text.primary' }}>
                             {pkgTypeLabel.replace('_', ' ')}
                           </Typography>
@@ -409,19 +639,22 @@ const ProductDetails = () => {
                 </Box>
               </Box>
             )}
+          </Grid>
 
+          {/* LOWER RIGHT: Quantity Stepper, Price Breaks & Add to Cart (On Right of Packaging) */}
+          <Grid size={{ xs: 12, md: 7 }}>
             {/* B2B Volume Price Breakdown Table */}
             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', mb: 1 }}>
               B2B Volume Price Breaks ({displayCurrency})
             </Typography>
             {priceBreaks.length === 0 ? (
-              <Paper elevation={0} sx={{ border: '1px solid #D6E4EE', mb: 4, borderRadius: 1, p: 3, textAlign: 'center' }}>
+              <Paper elevation={0} sx={{ border: '1px solid #D6E4EE', mb: 3, borderRadius: 1, p: 2.5, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
                   {CONTACT_US} for pricing on this component.
                 </Typography>
               </Paper>
             ) : (
-              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #D6E4EE', mb: 4, borderRadius: 1 }}>
+              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #D6E4EE', mb: 3, borderRadius: 1 }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: '#EDF4FA' }}>
@@ -543,88 +776,36 @@ const ProductDetails = () => {
 
         <Box sx={{ p: { xs: 3, md: 4 } }}>
           {activeTab === 0 && (
-            <TableContainer>
-              <Table size="small">
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 1.5, overflow: 'hidden' }}>
+              <Table size="small" sx={{ minWidth: 600 }}>
                 <TableBody>
-                  <TableRow><TableCell sx={{ fontWeight: 800, width: '30%', bgcolor: '#EDF4FA' }}>Manufacturer Part Number (MPN)</TableCell><TableCell sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{partNumber}</TableCell></TableRow>
-                  <TableRow><TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>Primary Manufacturer / Brand</TableCell><TableCell sx={{ fontWeight: 600 }}>{typeof manufacturer === 'string' ? manufacturer : 'Industrial Partner'}</TableCell></TableRow>
-                  <TableRow><TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>Component Classification</TableCell><TableCell sx={{ fontWeight: 600 }}>{typeof product.category === 'object' ? product.category?.name : (category?.name || product.category || 'Standard Series')}</TableCell></TableRow>
-                  <TableRow><TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>Stock Status & Lead Time</TableCell><TableCell sx={{ fontWeight: 700, color: stock > 0 ? 'success.main' : 'warning.main' }}>{stockText}</TableCell></TableRow>
-
-                  {/* Section 8.3 Dynamic Specification Rendering Algorithm */}
-                  {category?.segments ? (
-                    category.segments.map((segment) => {
-                      const hiddenSegments = new Set(product.meta?.hidden_segments ?? []);
-                      const hiddenAttributes = new Set(product.meta?.hidden_attributes ?? []);
-                      if (!segment.active || hiddenSegments.has(segment.id)) return null;
-
+                  {(() => {
+                    const dynamicAttrs = getAllDynamicAttributes(product, category);
+                    if (dynamicAttrs.length === 0) {
                       return (
-                        <React.Fragment key={segment.id}>
-                          <TableRow>
-                            <TableCell colSpan={2} sx={{ bgcolor: '#d8e8f5', fontWeight: 900, textTransform: 'uppercase', py: 1, color: 'primary.dark' }}>
-                              {segment.name}
-                            </TableCell>
-                          </TableRow>
-                          {segment.attributes && segment.attributes.map((attribute) => {
-                            if (!attribute.active || hiddenAttributes.has(attribute.id)) return null;
-
-                            if (attribute.datatype === 'FILE') {
-                              const doc = product.documents?.find(d => d.attributeId === attribute.id);
-                              return (
-                                <TableRow key={attribute.id}>
-                                  <TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>{attribute.attrKey}</TableCell>
-                                  <TableCell sx={{ fontWeight: 600 }}>
-                                    {(() => {
-                                      const key = doc?.url || doc?.objectKey;
-                                      if (key && key !== 'undefined' && key !== 'null') {
-                                        const href = key.startsWith('http') ? key : `${CDN_BASE}/${key}`;
-                                        return (
-                                          <Box 
-                                            component="a" 
-                                            href={href} 
-                                            target="_blank" 
-                                            rel="noreferrer" 
-                                            sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                                          >
-                                            <DownloadIcon fontSize="small" /> {doc.displayName || 'Download File'}
-                                          </Box>
-                                        );
-                                      }
-                                      return (
-                                        <Box 
-                                          component="span"
-                                          onClick={() => notification.info('Document has not been uploaded by admin yet. It will be available soon.')}
-                                          sx={{ color: 'text.secondary', cursor: 'pointer', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                                        >
-                                          <DownloadIcon fontSize="small" /> Document not added yet
-                                        </Box>
-                                      );
-                                    })()}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            } else {
-                              const value = (product.specs || product.specifications || {})[attribute.attrKey];
-                              const displayValue = value != null ? `${value}${attribute.unit ? ' ' + attribute.unit : ''}` : '—';
-                              return (
-                                <TableRow key={attribute.id}>
-                                  <TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA' }}>{attribute.attrKey}</TableCell>
-                                  <TableCell sx={{ fontWeight: 600 }}>{displayValue}</TableCell>
-                                </TableRow>
-                              );
-                            }
-                          })}
-                        </React.Fragment>
+                        <TableRow>
+                          <TableCell colSpan={2} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                            No technical specifications added for this component yet.
+                          </TableCell>
+                        </TableRow>
                       );
-                    })
-                  ) : (
-                    Object.entries(product.specs || product.specifications || {}).map(([key, value], idx) => (
-                      <TableRow key={idx}>
-                        <TableCell sx={{ fontWeight: 800, bgcolor: '#EDF4FA', textTransform: 'capitalize' }}>{key}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{String(value)}</TableCell>
+                    }
+                    return dynamicAttrs.map((attr, idx) => (
+                      <TableRow key={idx} sx={{ bgcolor: idx % 2 === 0 ? '#ffffff' : '#F8FAFC', '&:hover': { bgcolor: '#F1F5F9' } }}>
+                        <TableCell sx={{ fontWeight: 700, width: '35%', color: '#475569', py: 1.2, borderRight: '1px solid #E2E8F0', textTransform: 'capitalize' }}>
+                          {attr.key}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: '#0F172A', py: 1.2 }}>
+                          <span>{attr.value}</span>
+                          {attr.unit && (
+                            <Typography component="span" sx={{ color: '#64748B', fontWeight: 600, ml: 0.75, fontSize: '0.8125rem' }}>
+                              {attr.unit}
+                            </Typography>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </TableBody>
               </Table>
             </TableContainer>

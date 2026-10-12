@@ -14,15 +14,24 @@ import {
   Twitter as TwitterIcon,
   LinkedIn as LinkedInIcon,
   Instagram as InstagramIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Gavel as GrievanceIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import BrandLogo from './BrandLogo';
 import notification from '../../utils/notification';
+import { privacyService } from '../../services/apiServices';
 
 const Footer = () => {
   const [email, setEmail] = useState('');
+  const [officerContact, setOfficerContact] = useState(null);
+
+  React.useEffect(() => {
+    privacyService.getContact()
+      .then((res) => setOfficerContact(res))
+      .catch(() => {});
+  }, []);
 
   const handleSubscribe = (e) => {
     e.preventDefault();
@@ -135,7 +144,7 @@ const Footer = () => {
               </Box>
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>100% Genuine Components</Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>Factory certified & lot traceable</Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>Factory certified &amp; lot traceable</Typography>
               </Box>
             </Box>
           </Grid>
@@ -159,7 +168,7 @@ const Footer = () => {
               </Box>
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Encrypted B2B Payments</Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>ISO 27001 & Razorpay Secured</Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>ISO 27001 &amp; Razorpay Secured</Typography>
               </Box>
             </Box>
           </Grid>
@@ -203,7 +212,7 @@ const Footer = () => {
           {/* Quick Shop Links */}
           <Grid size={{ xs: 6, sm: 3, md: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8FB6D8' }}>
-              Shop & Discover
+              Shop &amp; Discover
             </Typography>
             <Stack spacing={1.5}>
               <Link component={RouterLink} to="/products" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
@@ -212,19 +221,13 @@ const Footer = () => {
               <Link component={RouterLink} to="/products?filter=in-stock" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
                 Ready to Ship (In Stock)
               </Link>
-              <Link component={RouterLink} to="/products?category=semiconductors" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Semiconductors
-              </Link>
-              <Link component={RouterLink} to="/products?category=passives" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Passive Components
-              </Link>
               <Link component={RouterLink} to="/user/quotations" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
                 Request B2B Quote
               </Link>
             </Stack>
           </Grid>
 
-          {/* Customer Service Links */}
+          {/* Customer Care Links */}
           <Grid size={{ xs: 6, sm: 3, md: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8FB6D8' }}>
               Customer Care
@@ -236,76 +239,65 @@ const Footer = () => {
               <Link component={RouterLink} to="/contact" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
                 Contact Support
               </Link>
-              <Link component={RouterLink} to="/contact#faq" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Help & FAQ
-              </Link>
               <Link component={RouterLink} to="/user/dashboard" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
                 Procurement Portal
               </Link>
             </Stack>
           </Grid>
 
-          {/* Company & Legal Links */}
+          {/* Mandatory DPDP Section 4.1 Legal & Privacy Links */}
           <Grid size={{ xs: 6, sm: 3, md: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8FB6D8' }}>
-              Company
+              Privacy &amp; DPDP
             </Typography>
             <Stack spacing={1.5}>
-              <Link component={RouterLink} to="/about" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                About Us
+              <Link component={RouterLink} to="/privacy-notice" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
+                Privacy Notice
+              </Link>
+              <Link component={RouterLink} to="/privacy-grievance" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
+                Raise a Grievance
+              </Link>
+              <Link component={RouterLink} to="/user/profile" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
+                Data Rights Portal
               </Link>
               <Link component={RouterLink} to="/privacy-policy" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Privacy Policy &amp; DPDP Notice
-              </Link>
-              <Link component={RouterLink} to="/about#quality" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Quality &amp; Compliance
-              </Link>
-              <Link component={RouterLink} to="/contact" color="inherit" underline="hover" variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white' } }}>
-                Corporate Address
+                DPDP Policy
               </Link>
             </Stack>
           </Grid>
 
-          {/* Contact Details */}
+          {/* Dynamic DPO Contact Details */}
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8FB6D8' }}>
-              Get in Touch
+              Data Protection Officer
             </Typography>
             <Stack spacing={2}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                <PhoneIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Sales Hotline</Typography>
+                <EmailIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>DPO Email</Typography>
                   <Typography
                     component="a"
-                    href="tel:+919925801333"
+                    href={`mailto:${officerContact?.email || 'sales@kdselectronics.com'}`}
                     variant="body2"
-                    sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
+                    sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
                   >
-                    +91 99258 01333
-                  </Typography>
-                  <Typography
-                    component="a"
-                    href="tel:+919925001333"
-                    variant="body2"
-                    sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
-                  >
-                    +91 99250 01333
+                    {officerContact?.email || 'sales@kdselectronics.com'}
                   </Typography>
                 </Box>
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                <EmailIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
+                <PhoneIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Inquiries</Typography>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>DPO Hotline</Typography>
                   <Typography
                     component="a"
-                    href="mailto:sales@kdselectronics.com"
+                    href={`tel:${officerContact?.phone || '+919925801333'}`}
                     variant="body2"
                     sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
                   >
-                    sales@kdselectronics.com
+                    {officerContact?.phone || '+91 99258 01333'}
                   </Typography>
                 </Box>
               </Box>
@@ -313,16 +305,9 @@ const Footer = () => {
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <LocationIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Location</Typography>
-                  <Typography
-                    component="a"
-                    href="https://maps.app.goo.gl/V5H9xHWCKsWJbaMh8"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="caption"
-                    sx={{ color: 'rgba(255,255,255,0.8)', display: 'block', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
-                  >
-                    K&DS Electronic Limited, MM Enterprise, Maruti Munchies, 7- Mani nagar, 7, Maninagar Main Rd, near Ashok garden, Mavadi Plot, Rajkot, Gujarat 360004
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Office Address</Typography>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', display: 'block' }}>
+                    {officerContact?.address || 'K&DS Electronic Limited, Mavadi Plot, Rajkot, Gujarat 360004'}
                   </Typography>
                 </Box>
               </Box>
@@ -335,7 +320,7 @@ const Footer = () => {
         {/* 3. Bottom Legal & Copyright Bar */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-            &copy; {new Date().getFullYear()} KDS Electronics Industrial Supply Ltd. All rights reserved. Registered ISO 9001:2015 Distributor.
+            &copy; {new Date().getFullYear()} KDS Electronics Industrial Supply Ltd. All rights reserved. DPDP Act 2023 Compliant.
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Chip label="VISA" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 700 }} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Button, Link, Grid, ToggleButton, ToggleButtonGroup, Divider, FormControlLabel, Checkbox, FormHelperText } from '@mui/material';
 import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 import { useForm, Controller } from 'react-hook-form';
@@ -6,7 +6,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import notification from '../utils/notification';
-import { authService } from '../services/apiServices';
+import { authService, privacyService } from '../services/apiServices';
 import BrandLogo from '../components/common/BrandLogo';
 
 const schema = yup.object({
@@ -23,36 +23,77 @@ const schema = yup.object({
     is: 'company',
     then: (schema) => schema.required('Tax/VAT ID is required'),
   }),
-  dpdpConsent: yup.boolean().oneOf([true], 'You must accept the Privacy Policy & Data Processing Notice'),
+  ageConfirmed: yup.boolean().oneOf([true], 'You must confirm that you are 18 years or older'),
+  noticeAccepted: yup.boolean().oneOf([true], 'You must read and accept the Privacy Notice'),
+  marketingConsent: yup.boolean(),
 }).required();
 
 const Register = () => {
   const [regType, setRegType] = useState('individual');
   const [loading, setLoading] = useState(false);
+  const [noticeVersion, setNoticeVersion] = useState('draft-0');
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm({
+  const fetchNotice = async () => {
+    try {
+      const res = await privacyService.getNotice();
+      const ver = res?.version || res?.data?.version || 'draft-0';
+      setNoticeVersion(ver);
+      return ver;
+    } catch (err) {
+      console.warn('Could not fetch privacy notice version:', err?.message);
+      return 'draft-0';
+    }
+  };
+
+  useEffect(() => {
+    fetchNotice();
+  }, []);
+
+  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { regType: 'individual', dpdpConsent: false }
+    defaultValues: {
+      regType: 'individual',
+      ageConfirmed: false,
+      noticeAccepted: false,
+      marketingConsent: false
+    }
   });
 
   const handleRegTypeChange = (event, newType) => {
     if (newType !== null) {
       setRegType(newType);
+      setValue('regType', newType);
     }
   };
 
   const onSubmit = async (data) => {
     setLoading(true);
+    let currentVersion = noticeVersion;
     try {
+      // Re-fetch latest notice version to avoid stale version rejection
+      currentVersion = await fetchNotice();
+
       const payload = {
         fullName: data.fullName,
         email: data.email,
         phone: data.phone || '',
-        password: data.password
+        password: data.password,
+        ageConfirmed: true,
+        noticeVersion: currentVersion,
       };
-      await authService.register(payload);
+
+      const res = await authService.register(payload);
+
+      // If user selected optional marketing consent, trigger separate privacy consent endpoint
+      if (data.marketingConsent) {
+        try {
+          await privacyService.changeConsent('MARKETING', 'GRANT');
+        } catch (mErr) {
+          console.warn('Marketing consent recording deferred:', mErr?.message);
+        }
+      }
       
       notification.success('Registration successful! Please login.');
       const from = location.state?.from || new URLSearchParams(location.search).get('redirect');
@@ -60,6 +101,15 @@ const Register = () => {
       navigate(loginPath, { state: { from } });
     } catch (error) {
       console.error('Registration failed:', error);
+      const resData = error?.response?.data;
+      if (error?.response?.status === 409 && resData?.title === 'Privacy notice out of date') {
+        const freshVer = resData.currentVersion || (await fetchNotice());
+        setNoticeVersion(freshVer);
+        notification.warning('Privacy notice has been updated. Please re-confirm your acceptance and click Register again.');
+      } else {
+        const msg = resData?.errors ? Object.values(resData.errors).join(', ') : (resData?.title || error?.message || 'Registration failed');
+        notification.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -165,29 +215,71 @@ const Register = () => {
               />
             </Grid>
 
+            {/* DPDP Section 22 Mandatory Checkbox 1: Age confirmation */}
             <Grid size={{ xs: 12 }}>
               <Controller
-                name="dpdpConsent"
+                name="ageConfirmed"
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel
                     control={<Checkbox {...field} checked={!!field.value} color="primary" />}
                     label={
                       <Typography variant="body2" color="text.secondary">
-                        I agree to the processing of my personal data under the{' '}
-                        <Link component={RouterLink} to="/privacy-policy" target="_blank" underline="always" color="primary">
-                          DPDP Act 2023 &amp; Privacy Policy
+                        I confirm that I am 18 years or older.
+                      </Typography>
+                    }
+                  />
+                )}
+              />
+              {errors.ageConfirmed && (
+                <FormHelperText error sx={{ ml: 1 }}>
+                  {errors.ageConfirmed.message}
+                </FormHelperText>
+              )}
+            </Grid>
+
+            {/* DPDP Section 2.2 Mandatory Checkbox 2: Privacy notice acceptance */}
+            <Grid size={{ xs: 12 }}>
+              <Controller
+                name="noticeAccepted"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={<Checkbox {...field} checked={!!field.value} color="primary" />}
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        I have read and accept the{' '}
+                        <Link component={RouterLink} to="/privacy-notice" target="_blank" underline="always" color="primary">
+                          Privacy Notice ({noticeVersion})
                         </Link>.
                       </Typography>
                     }
                   />
                 )}
               />
-              {errors.dpdpConsent && (
+              {errors.noticeAccepted && (
                 <FormHelperText error sx={{ ml: 1 }}>
-                  {errors.dpdpConsent.message}
+                  {errors.noticeAccepted.message}
                 </FormHelperText>
               )}
+            </Grid>
+
+            {/* DPDP Section 2.2 Optional Checkbox 3: Separate unbundled marketing emails */}
+            <Grid size={{ xs: 12 }}>
+              <Controller
+                name="marketingConsent"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={<Checkbox {...field} checked={!!field.value} color="primary" />}
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        (Optional) Send me marketing emails, BOM market insights, and bulk pricing promotions.
+                      </Typography>
+                    }
+                  />
+                )}
+              />
             </Grid>
           </Grid>
 
@@ -211,7 +303,7 @@ const Register = () => {
           <Divider sx={{ flex: 1 }} />
         </Box>
 
-        <GoogleLoginButton text="signup_with" />
+        <GoogleLoginButton text="signup_with" noticeVersion={noticeVersion} />
 
         <Box sx={{ textAlign: 'center', mt: 3 }}>
           <Typography variant="body2" color="text.secondary">

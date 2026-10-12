@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Button, Paper, Radio, RadioGroup, FormControlLabel, 
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, 
-  IconButton, Chip, CircularProgress 
+  IconButton, Chip, CircularProgress, MenuItem
 } from '@mui/material';
 import { Add, Home, Business, Edit, Delete, StarBorder } from '@mui/icons-material';
 import { userService } from '../../services/apiServices';
 import { useAuth } from '../../context/AuthContext';
 import notification from '../../utils/notification';
+import { GST_STATES, getGSTStateByName } from '../../constants/gstStates';
 
 const AddressManager = ({ onSelectAddress, readOnly = false }) => {
   const [addresses, setAddresses] = useState([]);
@@ -20,8 +21,8 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
     line1: '',
     line2: '',
     city: '',
-    state: '',
-    country: 'IN',
+    stateCode: '24', // Default to Gujarat (24)
+    country: 'IN',   // Always IN as required by GST Guide §4
     pincode: '',
     phone: '',
     makeDefault: false
@@ -71,13 +72,19 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
   const handleOpenDialog = (addr = null) => {
     if (addr) {
       setEditingId(addr.id);
+      let derivedStateCode = addr.stateCode;
+      if (!derivedStateCode && addr.state) {
+        const match = getGSTStateByName(addr.state);
+        if (match) derivedStateCode = match.code;
+      }
+
       setFormData({
         label: addr.label || 'Home',
         line1: addr.line1 || '',
         line2: addr.line2 || '',
         city: addr.city || '',
-        state: addr.state || '',
-        country: addr.country || 'IN',
+        stateCode: derivedStateCode || '24',
+        country: 'IN', // locked to IN
         pincode: addr.pincode || '',
         phone: addr.phone || '',
         makeDefault: addr.isDefault || false
@@ -89,7 +96,7 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
         line1: '',
         line2: '',
         city: '',
-        state: '',
+        stateCode: '24',
         country: 'IN',
         pincode: '',
         phone: '',
@@ -111,18 +118,29 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
 
   const handleSaveAddress = async (e) => {
     e.preventDefault();
-    if (!formData.line1 || !formData.city || !formData.state || !formData.pincode) {
+    if (!formData.line1 || !formData.city || !formData.stateCode || !formData.pincode) {
       notification.warning('Please fill in all required fields.');
       return;
     }
     try {
       setSubmitting(true);
+      const payload = {
+        label: formData.label,
+        line1: formData.line1,
+        line2: formData.line2 || null,
+        city: formData.city,
+        stateCode: formData.stateCode, // Delivery GST Guide §4 breaking change
+        country: 'IN',
+        pincode: formData.pincode,
+        phone: formData.phone || null,
+        isDefault: formData.makeDefault
+      };
+
       if (editingId) {
-        // PUT is a full replace as per Section 6.2 spec
-        await userService.updateAddress(editingId, formData);
+        await userService.updateAddress(editingId, payload);
         notification.success('Address updated successfully!');
       } else {
-        await userService.createAddress(formData);
+        await userService.createAddress(payload);
         notification.success('New address added successfully!');
       }
       handleCloseDialog();
@@ -130,6 +148,8 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
       if (refreshProfile) await refreshProfile();
     } catch (err) {
       console.error('Save address error:', err);
+      const msg = err?.response?.data?.title || err?.response?.data?.detail || 'Failed to save address';
+      notification.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -187,63 +207,66 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
       ) : (
         <RadioGroup value={selected ?? ''} onChange={handleChange}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {addresses.map((addr) => (
-              <Paper 
-                key={addr.id} 
-                elevation={0} 
-                sx={{ 
-                  p: 2.5, 
-                  border: '1px solid', 
-                  borderColor: selected === addr.id ? 'primary.main' : 'divider',
-                  bgcolor: selected === addr.id ? 'primary.50' : 'background.paper',
-                  borderRadius: 2,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start'
-                }}
-              >
-                <FormControlLabel 
-                  value={addr.id} 
-                  control={<Radio />} 
-                  label={
-                    <Box sx={{ ml: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                        {addr.label?.toLowerCase() === 'home' ? <Home fontSize="small" color="action" /> : <Business fontSize="small" color="action" />}
-                        <Typography variant="subtitle2" fontWeight={700}>{addr.label || 'Address'}</Typography>
-                        {addr.isDefault && <Chip label="Default" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }} />}
-                      </Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {addr.city}, {addr.state} - {addr.pincode} ({addr.country})
-                      </Typography>
-                      {addr.phone && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                          Phone: {addr.phone}
+            {addresses.map((addr) => {
+              const stateName = addr.state || GST_STATES.find(s => s.code === addr.stateCode)?.name || addr.stateCode;
+              return (
+                <Paper 
+                  key={addr.id} 
+                  elevation={0} 
+                  sx={{ 
+                    p: 2.5, 
+                    border: '1px solid', 
+                    borderColor: selected === addr.id ? 'primary.main' : 'divider',
+                    bgcolor: selected === addr.id ? 'primary.50' : 'background.paper',
+                    borderRadius: 2,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                  }}
+                >
+                  <FormControlLabel 
+                    value={addr.id} 
+                    control={<Radio />} 
+                    label={
+                      <Box sx={{ ml: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                          {addr.label?.toLowerCase() === 'home' ? <Home fontSize="small" color="action" /> : <Business fontSize="small" color="action" />}
+                          <Typography variant="subtitle2" fontWeight={700}>{addr.label || 'Address'}</Typography>
+                          {addr.isDefault && <Chip label="Default" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }} />}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}
                         </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {addr.city}, {stateName} ({addr.stateCode}) - {addr.pincode} (India)
+                        </Typography>
+                        {addr.phone && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                            Phone: {addr.phone}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    sx={{ flexGrow: 1, m: 0, alignItems: 'flex-start' }}
+                  />
+                  {!readOnly && (
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {!addr.isDefault && (
+                        <IconButton size="small" title="Make Default" onClick={(e) => handleSetDefault(addr.id, e)}>
+                          <StarBorder fontSize="small" />
+                        </IconButton>
                       )}
-                    </Box>
-                  }
-                  sx={{ flexGrow: 1, m: 0, alignItems: 'flex-start' }}
-                />
-                {!readOnly && (
-                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    {!addr.isDefault && (
-                      <IconButton size="small" title="Make Default" onClick={(e) => handleSetDefault(addr.id, e)}>
-                        <StarBorder fontSize="small" />
+                      <IconButton size="small" title="Edit Address" onClick={(e) => { e.stopPropagation(); handleOpenDialog(addr); }}>
+                        <Edit fontSize="small" />
                       </IconButton>
-                    )}
-                    <IconButton size="small" title="Edit Address" onClick={(e) => { e.stopPropagation(); handleOpenDialog(addr); }}>
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" title="Delete Address" color="error" onClick={(e) => handleDelete(addr.id, e)}>
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
-              </Paper>
-            ))}
+                      <IconButton size="small" title="Delete Address" color="error" onClick={(e) => handleDelete(addr.id, e)}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
+                </Paper>
+              );
+            })}
           </Box>
         </RadioGroup>
       )}
@@ -271,16 +294,34 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="City" name="city" value={formData.city} onChange={handleFormChange} required />
               </Grid>
+
+              {/* State Dropdown with 2-digit GST State Code (Section 4 breaking change) */}
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth size="small" label="State / Province" name="state" value={formData.state} onChange={handleFormChange} required />
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="State (GST State Code)"
+                  name="stateCode"
+                  value={formData.stateCode}
+                  onChange={handleFormChange}
+                  required
+                >
+                  {GST_STATES.map((s) => (
+                    <MenuItem key={s.code} value={s.code}>
+                      {s.name} ({s.code})
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
+
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth size="small" label="Pincode / Zip" name="pincode" value={formData.pincode} onChange={handleFormChange} required />
               </Grid>
+              
+              {/* Country locked to IN */}
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth size="small" label="Country (2-char ISO)" name="country" value={formData.country} onChange={handleFormChange} required helperText="e.g. IN, US, UK" slotProps={{
-                  htmlInput: { maxLength: 2 }
-                }} />
+                <TextField fullWidth size="small" label="Country" value="India (IN)" disabled helperText="Only IN allowed per GST rules" />
               </Grid>
             </Grid>
           </DialogContent>

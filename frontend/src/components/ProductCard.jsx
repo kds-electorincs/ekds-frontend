@@ -46,7 +46,7 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
 
   // Robust field mapping & S3 AWS Image resolution
   const name = product.name || product.title || 'Component Specification Pending';
-  const partNumber = product.partNumber || product.sku || `PART-${product.id || product._id || 'N/A'}`;
+  const partNumber = product.partNumber || product.mpn || product.sku || `PART-${product.id || product._id || 'N/A'}`;
   const manufacturer = product.brand || product.manufacturer || (typeof product.category === 'object' ? product.category?.name : 'Verified Brand');
   
   const s3Image = resolveS3ImageUrl(product);

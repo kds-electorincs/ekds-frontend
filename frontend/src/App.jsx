@@ -13,6 +13,7 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/PrivacyPolicyPage';
+import PublicGrievanceForm from './pages/PublicGrievanceForm';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -45,6 +46,8 @@ import DashboardCategoryDetails from './pages/admin/DashboardCategoryDetails';
 import DashboardMedia from './pages/admin/DashboardMedia';
 import DashboardCatalogConfig from './pages/admin/DashboardCatalogConfig';
 import DashboardMaintenance from './pages/admin/DashboardMaintenance';
+import DashboardDeliveryRates from './pages/admin/DashboardDeliveryRates';
+import DashboardPrivacy from './pages/admin/DashboardPrivacy';
 import StaffManagement from './pages/admin/StaffManagement';
 import ActivityLogs from './pages/admin/ActivityLogs';
 import DashboardDiscrepancies from './pages/admin/DashboardDiscrepancies';
@@ -62,7 +65,6 @@ const ProtectedAdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
-  // If user does not have an admin-level role, redirect them to public home
   const isAdmin = Object.values(ROLES).includes(user.role) || user.role === 'ADMIN' || user.role === 'MANAGER' || user.role === 'STAFF';
   
   if (!isAdmin) {
@@ -79,7 +81,7 @@ const PermissionRoute = ({ permission, children }) => {
     return <Navigate to="/login" replace />;
   }
   
-  if (!hasPermission(permission)) {
+  if (permission && !hasPermission(permission)) {
     return <Navigate to="/admin/dashboard" replace />;
   }
   
@@ -99,6 +101,8 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-notice" element={<PrivacyPolicy />} />
+          <Route path="/privacy-grievance" element={<PublicGrievanceForm />} />
           
           {/* Customer Auth */}
           <Route path="/login" element={<Login />} />
@@ -110,7 +114,6 @@ function App() {
           {/* E-Commerce Cart, Checkout & Order/Payment Status */}
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
-          {/* Razorpay callback redirect targets (guide §1) */}
           <Route path="/orders" element={<OrdersLanding />} />
           <Route path="/orders/:orderNumber" element={<OrderStatus />} />
         </Route>
@@ -145,7 +148,6 @@ function App() {
             </PermissionRoute>
           } />
           
-          {/* Catalog Management (Phase 2) */}
           <Route path="categories" element={
             <PermissionRoute permission={PERMISSIONS.MANAGE_CATEGORIES}>
               <DashboardCategories />
@@ -174,13 +176,24 @@ function App() {
             </PermissionRoute>
           } />
           
+          <Route path="delivery-rates" element={
+            <PermissionRoute permission={PERMISSIONS.MANAGE_STAFF}>
+              <DashboardDeliveryRates />
+            </PermissionRoute>
+          } />
+
+          <Route path="privacy" element={
+            <PermissionRoute permission={PERMISSIONS.VIEW_USERS}>
+              <DashboardPrivacy />
+            </PermissionRoute>
+          } />
+
           <Route path="maintenance" element={
             <PermissionRoute permission={PERMISSIONS.MANAGE_MAINTENANCE}>
               <DashboardMaintenance />
             </PermissionRoute>
           } />
           
-          {/* Orders & Customers */}
           <Route path="orders" element={
             <PermissionRoute permission={PERMISSIONS.MANAGE_ORDERS}>
               <DashboardOrders />
@@ -193,7 +206,6 @@ function App() {
             </PermissionRoute>
           } />
 
-          {/* Admin Configuration */}
           <Route path="staff" element={
             <PermissionRoute permission={PERMISSIONS.MANAGE_STAFF}>
               <StaffManagement />

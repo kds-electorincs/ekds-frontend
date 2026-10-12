@@ -66,14 +66,14 @@ export const AuthProvider = ({ children }) => {
     // Attempt silent refresh on startup
     silentRefresh();
 
-    // Catch session expiration events from Axios interceptor
+    // Catch session expiration events from Axios interceptor (Section 1 DPDP obligation)
     const handleAuthExpired = () => {
       setAccessToken(null);
       setUser(null);
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-      toast.error('Session expired. Please log in again.');
+      toast.error('Session expired or account disabled. Please log in again.');
     };
 
     window.addEventListener('auth-expired', handleAuthExpired);
@@ -101,15 +101,13 @@ export const AuthProvider = ({ children }) => {
         userData = profileResponse.data || profileResponse;
       }
 
-      // Normalize backend roles array to frontend role string
       if (userData && Array.isArray(userData.roles) && userData.roles.length > 0) {
-        // Get the highest privilege role (or just the first one for now)
         let primaryRole = userData.roles[0];
         if (typeof primaryRole === 'object' && primaryRole.name) {
           primaryRole = primaryRole.name;
         }
         if (typeof primaryRole === 'string' && primaryRole.startsWith('ROLE_')) {
-          primaryRole = primaryRole.substring(5); // Strip 'ROLE_'
+          primaryRole = primaryRole.substring(5);
         }
         userData.role = primaryRole || 'CUSTOMER';
       } else if (userData && !userData.role) {
@@ -126,7 +124,7 @@ export const AuthProvider = ({ children }) => {
       return userData;
     } catch (error) {
       console.error('API login failed:', error.message);
-      throw error; // Let the UI handle the error (e.g. show toast)
+      throw error;
     }
   };
 
@@ -174,9 +172,10 @@ export const AuthProvider = ({ children }) => {
     return user?.role === role;
   };
 
-  const loginWithGoogle = async (idToken) => {
+  const loginWithGoogle = async (googlePayload) => {
     try {
-      const response = await axiosClient.post('/auth/google', { idToken });
+      const payload = typeof googlePayload === 'string' ? { idToken: googlePayload } : googlePayload;
+      const response = await axiosClient.post('/auth/google', payload);
       setAccessToken(response.accessToken);
       let userData = response.user;
       if (!userData) {
@@ -186,14 +185,13 @@ export const AuthProvider = ({ children }) => {
         userData = profileResponse.data || profileResponse;
       }
 
-      // Normalize backend roles array to frontend role string
       if (userData && Array.isArray(userData.roles) && userData.roles.length > 0) {
         let primaryRole = userData.roles[0];
         if (typeof primaryRole === 'object' && primaryRole.name) {
           primaryRole = primaryRole.name;
         }
         if (typeof primaryRole === 'string' && primaryRole.startsWith('ROLE_')) {
-          primaryRole = primaryRole.substring(5); // Strip 'ROLE_'
+          primaryRole = primaryRole.substring(5);
         }
         userData.role = primaryRole || 'CUSTOMER';
       } else if (userData && !userData.role) {

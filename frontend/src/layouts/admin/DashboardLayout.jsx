@@ -48,6 +48,8 @@ const DashboardLayout = () => {
     { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories', permission: PERMISSIONS.MANAGE_CATEGORIES },
     { text: 'Products', icon: <InventoryIcon />, path: '/admin/products', permission: PERMISSIONS.MANAGE_PRODUCTS },
     { text: 'Orders', icon: <ShoppingCartIcon />, path: '/admin/orders', permission: PERMISSIONS.MANAGE_ORDERS },
+    { text: 'Delivery Rates', icon: <BuildIcon />, path: '/admin/delivery-rates', permission: PERMISSIONS.MANAGE_STAFF },
+    { text: 'Privacy & DPDP', icon: <SecurityIcon />, path: '/admin/privacy', permission: PERMISSIONS.VIEW_USERS },
     { text: 'Staff & RBAC', icon: <SecurityIcon />, path: '/admin/staff', permission: PERMISSIONS.MANAGE_STAFF },
     { text: 'Discrepancies', icon: <WarningIcon />, path: '/admin/discrepancies', permission: PERMISSIONS.MANAGE_DISCREPANCIES },
   ];

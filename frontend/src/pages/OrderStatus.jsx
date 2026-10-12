@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box, Container, Typography, Paper, Grid, Divider, Button, Chip,
-  CircularProgress, Alert, List, ListItem, ListItemText,
+  CircularProgress, Alert, List, ListItem, ListItemText, Table, TableBody, TableCell, TableHead, TableRow
 } from '@mui/material';
 import {
   CheckCircle, HourglassTop, ErrorOutlineOutlined as ErrorOutline, ReceiptLong, Home,
@@ -25,16 +25,10 @@ const PAYMENT_STATUS_UI = {
 const OrderStatus = () => {
   const { orderNumber } = useParams();
   const [searchParams] = useSearchParams();
-  const paymentHint = searchParams.get('payment'); // success | pending | error
+  const paymentHint = searchParams.get('payment');
   const { fetchCart } = useCart();
 
   const [order, setOrder] = useState(null);
-  // TODO(backend-missing): No backend endpoint for
-  // GET /orders/{orderNumber}/tracking (OrderController only has
-  // place/list/get). Status-history timeline is stubbed out below until
-  // that endpoint exists — see orderService.getOrderTracking in
-  // apiServices.js (commented out there too).
-  // const [tracking, setTracking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
   const [pollTimedOut, setPollTimedOut] = useState(false);
@@ -53,17 +47,6 @@ const OrderStatus = () => {
     }
   }, [orderNumber]);
 
-  // TODO(backend-missing): see tracking state note above.
-  // const loadTracking = useCallback(async () => {
-  //   try {
-  //     const data = await orderService.getOrderTracking(orderNumber);
-  //     setTracking(Array.isArray(data) ? data : (data?.content || []));
-  //   } catch {
-  //     // tracking is supplementary — fail silently
-  //   }
-  // }, [orderNumber]);
-
-  // ─── Initial load ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!orderNumber) return;
     let mounted = true;
@@ -71,9 +54,6 @@ const OrderStatus = () => {
       setLoading(true);
       const data = await loadOrder();
       if (mounted) setLoading(false);
-      // Cart is authoritative server-side and was left untouched at
-      // placement time (guide §1 — no proof of payment until webhook), so
-      // once we can see PAID here, refresh the local cart context.
       if (data?.paymentStatus === 'PAID' && !cartRefreshed.current) {
         cartRefreshed.current = true;
         fetchCart();
@@ -82,7 +62,6 @@ const OrderStatus = () => {
     return () => { mounted = false; };
   }, [orderNumber, loadOrder, fetchCart]);
 
-  // ─── Poll while PENDING and we just came back from Razorpay ───────────────
   useEffect(() => {
     if (!order) return;
     const shouldPoll = order.paymentStatus === 'PENDING' && (paymentHint === 'success' || paymentHint === 'pending');
@@ -109,25 +88,6 @@ const OrderStatus = () => {
 
     return () => clearTimeout(pollTimer.current);
   }, [order, paymentHint, loadOrder, fetchCart]);
-
-  // TODO(backend-missing): No backend endpoint for
-  // POST /orders/{orderNumber}/cancel (OrderController has no cancel
-  // method). "Cancel Order" button below is commented out until that
-  // endpoint exists — see orderService.cancelOrder in apiServices.js
-  // (commented out there too).
-  // const [cancelling, setCancelling] = useState(false);
-  // const handleCancel = async () => {
-  //   setCancelling(true);
-  //   try {
-  //     const data = await orderService.cancelOrder(orderNumber);
-  //     setOrder(data);
-  //     notification.success('Order cancelled.');
-  //   } catch {
-  //     // toasted by axiosClient
-  //   } finally {
-  //     setCancelling(false);
-  //   }
-  // };
 
   if (loading) {
     return (
@@ -157,6 +117,9 @@ const OrderStatus = () => {
   const showConfirming = polling && order.paymentStatus === 'PENDING';
   const isPaid = order.paymentStatus === 'PAID';
 
+  const amounts = order.amounts || {};
+  const isGujarat = order.shippingStateCode === '24' || amounts.cgstInrScaled > 0;
+
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Paper elevation={3} sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
@@ -180,17 +143,6 @@ const OrderStatus = () => {
               Razorpay confirmed your checkout, but our system is still finalizing the payment. This usually takes a few seconds.
             </Typography>
           )}
-          {pollTimedOut && !isPaid && (
-            <Alert severity="info" sx={{ mt: 2, textAlign: 'left' }}>
-              We're still confirming this payment — it can occasionally take a little longer.
-              Check your <RouterLink to="/user/orders">orders page</RouterLink> shortly; you don't need to keep this tab open.
-            </Alert>
-          )}
-          {paymentHint === 'error' && !isPaid && (
-            <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>
-              The payment gateway reported an error. If money was deducted, it will reconcile automatically — otherwise, please retry from your cart.
-            </Alert>
-          )}
 
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 2, bgcolor: 'grey.50', px: 3, py: 1.5, borderRadius: 3, my: 2, flexWrap: 'wrap', justifyContent: 'center', border: '1px solid', borderColor: 'divider' }}>
             <Box>Order: <strong>{order.orderNumber}</strong></Box>
@@ -206,49 +158,86 @@ const OrderStatus = () => {
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>SHIPPING ADDRESS</Typography>
             {order.addresses?.filter(a => a.addressType === 'SHIPPING').map((addr, i) => (
               <Box key={i}>
-                <Typography variant="body2">{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}</Typography>
-                <Typography variant="body2">{addr.city}, {addr.state} - {addr.pincode}</Typography>
+                <Typography variant="body2" fontWeight={700}>{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}</Typography>
+                <Typography variant="body2">{addr.city}, {addr.state} ({addr.stateCode}) - {addr.pincode}</Typography>
               </Box>
             ))}
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>ORDER SUMMARY</Typography>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>ORDER &amp; GST TAX BREAKDOWN</Typography>
             <Typography variant="body2">Placed: {order.placedAt ? new Date(order.placedAt).toLocaleString() : '—'}</Typography>
-            <Typography variant="body2">Items: {order.itemCount}</Typography>
-            <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ mt: 1 }}>
-              Total: {formatTotal(order.grandTotalScaled, order.priceScale, order.displayCurrency)}
-            </Typography>
-            {order.courierName && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                <LocalShipping sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
-                {order.courierName} — AWB {order.awbNumber}
-              </Typography>
-            )}
+            <Typography variant="body2">Total Weight: {amounts.totalWeightG ? `${amounts.totalWeightG} g` : '—'}</Typography>
+            <Typography variant="body2">Delivery Zone: {amounts.deliveryZone || '—'}</Typography>
+            
+            <Box sx={{ mt: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="caption" color="text.secondary">Goods (ex-GST):</Typography>
+                <Typography variant="caption" fontWeight={700}>₹{((amounts.goodsSubtotalInrScaled || 0) / 10000).toFixed(2)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="caption" color="text.secondary">Delivery (ex-GST):</Typography>
+                <Typography variant="caption" fontWeight={700}>₹{((amounts.deliveryExGstInrScaled || 0) / 10000).toFixed(2)}</Typography>
+              </Box>
+              {isGujarat ? (
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="caption" color="text.secondary">CGST:</Typography>
+                    <Typography variant="caption" fontWeight={700}>₹{((amounts.cgstInrScaled || 0) / 10000).toFixed(2)}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="caption" color="text.secondary">SGST:</Typography>
+                    <Typography variant="caption" fontWeight={700}>₹{((amounts.sgstInrScaled || 0) / 10000).toFixed(2)}</Typography>
+                  </Box>
+                </>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="caption" color="text.secondary">IGST:</Typography>
+                  <Typography variant="caption" fontWeight={700}>₹{((amounts.igstInrScaled || 0) / 10000).toFixed(2)}</Typography>
+                </Box>
+              )}
+              <Divider sx={{ my: 0.5 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" fontWeight={800}>Grand Total:</Typography>
+                <Typography variant="body2" fontWeight={800} color="primary.main">
+                  {formatTotal(order.grandTotalScaled || amounts.grandTotalInrScaled, order.priceScale || 4, 'INR')}
+                </Typography>
+              </Box>
+            </Box>
           </Grid>
         </Grid>
 
         {order.items?.length > 0 && (
           <>
             <Divider sx={{ my: 3 }} />
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>ITEMS</Typography>
-            <List dense>
-              {order.items.map((item, i) => (
-                <ListItem key={i} disableGutters sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <ListItemText
-                    primary={`${item.mpn} — ${item.manufacturer || ''}`}
-                    secondary={`Qty ${item.quantity}${item.wasBackordered ? ' · Backordered' : ''}`}
-                  />
-                  <Typography fontWeight={700}>
-                    {formatTotal(item.lineInclGstInrScaled, order.priceScale, 'INR')}
-                  </Typography>
-                </ListItem>
-              ))}
-            </List>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>ITEMIZED LINE TAX BREAKDOWN</Typography>
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: '#EDF4FA' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Part / MPN</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700 }}>Qty</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Ex-GST (INR)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700 }}>Tax Type</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Incl-GST (INR)</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {order.items.map((item, i) => (
+                    <TableRow key={i}>
+                      <TableCell sx={{ fontWeight: 600 }}>{item.mpn || item.productName}</TableCell>
+                      <TableCell align="center">{item.quantity}</TableCell>
+                      <TableCell align="right">₹{((item.lineExGstInrScaled || 0) / 10000).toFixed(2)}</TableCell>
+                      <TableCell align="center">
+                        <Chip label={item.taxSplitType || (isGujarat ? 'CGST_SGST' : 'IGST')} size="small" variant="outlined" sx={{ fontSize: '0.65rem' }} />
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>₹{((item.lineInclGstInrScaled || 0) / 10000).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </>
         )}
-
-        {/* TODO(backend-missing): status-history timeline — see tracking
-            state/loadTracking TODO near the top of this file. */}
 
         <Divider sx={{ my: 3 }} />
 
@@ -259,8 +248,6 @@ const OrderStatus = () => {
           <Button variant="text" color="inherit" size="large" startIcon={<Home />} component={RouterLink} to="/products">
             Continue Shopping
           </Button>
-          {/* TODO(backend-missing): "Cancel Order" button — see handleCancel
-              TODO above (no POST /orders/{orderNumber}/cancel endpoint yet). */}
         </Box>
       </Paper>
     </Container>

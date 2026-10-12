@@ -215,8 +215,8 @@ const DashboardProducts = () => {
   };
 
   const handleAddProduct = async () => {
-    if (!addForm.name || !addForm.sku || !addForm.category || !addForm.packType || !addForm.currency || !addForm.price) {
-      toast.error('Please fill in Name, SKU, Category, Price, Pack Type, and Currency');
+    if (!addForm.name || !addForm.sku || !addForm.category || !addForm.packType || !addForm.currency || !addForm.price || !addForm.weightGrams) {
+      toast.error('Please fill in Name, SKU, Category, Price, Weight (Grams), Pack Type, and Currency');
       return;
     }
     
@@ -247,13 +247,14 @@ const DashboardProducts = () => {
         }
       });
 
-      // Send real request to backend
+      // Send real request to backend (weightGrams required per Delivery GST Guide §8.1)
       const payload = {
         name: addForm.name,
         mpn: addForm.sku,
         categoryId: parseInt(addForm.category),
         manufacturer: addForm.manufacturer || "Default",
         description: addForm.description || "",
+        weightGrams: parseInt(addForm.weightGrams),
         restockLeadDays: 0,
         specs: formattedSpecs,
         meta: { hiddenSegments: [], hiddenAttributes: [] },
@@ -520,6 +521,17 @@ const DashboardProducts = () => {
                 type="number" 
                 value={addForm.stock} 
                 onChange={(e) => setAddForm({ ...addForm, stock: e.target.value })} 
+              />
+              <TextField 
+                fullWidth 
+                required
+                label="Shipping Weight (Grams)" 
+                variant="outlined" 
+                type="number" 
+                placeholder="e.g. 1000"
+                value={addForm.weightGrams || ''} 
+                onChange={(e) => setAddForm({ ...addForm, weightGrams: e.target.value })} 
+                helperText="Required per unit"
               />
             </Box>
 

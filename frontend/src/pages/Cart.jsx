@@ -1,7 +1,8 @@
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Divider, Grid,
-  Chip, Alert, CircularProgress, Tooltip, Container,
+  Chip, Alert, CircularProgress, Tooltip, Container, TextField, MenuItem
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,10 +23,11 @@ import EmptyState from '../components/common/EmptyState';
 import notification from '../utils/notification';
 import { useAuth } from '../context/AuthContext';
 import { formatTotal } from '../utils/priceUtils';
+import { GST_STATES } from '../constants/gstStates';
+import { userService } from '../services/apiServices';
 
 const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
 
-// ─── Reason badge renderer ────────────────────────────────────────────────────
 const REASON_UI = {
   PACKAGING_INACTIVE: { label: 'No longer available', color: 'error' },
   PRODUCT_INACTIVE:   { label: 'Product discontinued', color: 'error' },
@@ -40,14 +42,39 @@ const Cart = () => {
     cartItems, availableItems, unavailableItems,
     cartLoading, unavailableLineCount, availableLineCount,
     priceScale, subtotalInrScaled, subtotalScaled, responseCurrency,
+    deliveryEstimate, fetchCart, selectedStateCode, setSelectedStateCode,
     removeCartItem, updateCartItem, fixCartItemQuantity, clearCart,
-    formatInr, formatUnitPrice,
+    formatInr, formatUnitPrice, unscalePrice
   } = useCart();
 
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // ─── Not logged in ────────────────────────────────────────────────────────
+  const [stateCode, setStateCode] = useState(selectedStateCode || '24');
+
+  // Attempt auto-fill default address stateCode if none selected
+  useEffect(() => {
+    if (user && !selectedStateCode) {
+      userService.getAddresses().then((res) => {
+        const list = Array.isArray(res) ? res : (res?.content || res?.data || []);
+        if (list.length > 0) {
+          const def = list.find(a => a.isDefault) || list[0];
+          if (def?.stateCode) {
+            setStateCode(def.stateCode);
+            setSelectedStateCode(def.stateCode);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [user, selectedStateCode, setSelectedStateCode]);
+
+  const handleStateChange = (e) => {
+    const val = e.target.value;
+    setStateCode(val);
+    setSelectedStateCode(val);
+    fetchCart(undefined, val);
+  };
+
   if (!user) {
     return (
       <Box sx={{ py: 8 }}>
@@ -61,7 +88,6 @@ const Cart = () => {
     );
   }
 
-  // ─── Loading ──────────────────────────────────────────────────────────────
   if (cartLoading && cartItems.length === 0) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 16 }}>
@@ -71,7 +97,6 @@ const Cart = () => {
     );
   }
 
-  // ─── Empty ────────────────────────────────────────────────────────────────
   if (!cartLoading && cartItems.length === 0) {
     return (
       <Box sx={{ py: 8 }}>
@@ -85,12 +110,11 @@ const Cart = () => {
     );
   }
 
-  // ─── Quantity stepper helpers ─────────────────────────────────────────────
   const stepDown = (item) => {
     const moq  = item.minOrderQuantity ?? 1;
     const step = item.orderMultiple ?? 1;
     const next = item.quantity - step;
-    if (next < moq) return; // floor is MOQ
+    if (next < moq) return;
     updateCartItem(item.packagingOptionId, next);
   };
 
@@ -99,10 +123,7 @@ const Cart = () => {
     updateCartItem(item.packagingOptionId, item.quantity + step);
   };
 
-  // ─── Totals ───────────────────────────────────────────────────────────────
   const isNonInr = responseCurrency && responseCurrency !== 'INR';
-
-  // ─── Checkout guard ───────────────────────────────────────────────────────
   const checkoutBlocked = unavailableLineCount > 0;
 
   const handleConvertToQuote = () => {
@@ -110,7 +131,6 @@ const Cart = () => {
     navigate('/user/quotations');
   };
 
-  // ─── Row renderer ─────────────────────────────────────────────────────────
   const renderRow = (item, isUnavailable = false) => {
     const imageUrl = item.primaryImageUrl ? `${CDN_BASE}/${item.primaryImageUrl}` : null;
     const reasonInfo = REASON_UI[item.reason] ?? null;
@@ -127,7 +147,6 @@ const Cart = () => {
           bgcolor: isUnavailable ? '#FFF8F8' : 'inherit',
         }}
       >
-        {/* Component Identification */}
         <TableCell sx={{ py: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {imageUrl ? (
@@ -153,7 +172,6 @@ const Cart = () => {
                 {item.manufacturer && `MFR: ${item.manufacturer}`}
                 {item.packagingType && ` · ${item.packagingType.replace(/_/g, ' ')}`}
               </Typography>
-              {/* Unavailability reason badge */}
               {isUnavailable && reasonInfo && (
                 <Chip
                   icon={<WarningIcon />}
@@ -167,7 +185,6 @@ const Cart = () => {
           </Box>
         </TableCell>
 
-        {/* Stock / Backorder status */}
         <TableCell align="center">
           {isUnavailable ? (
             <Chip label="⛔ Unavailable" size="small" color="error" variant="outlined" sx={{ fontSize: '0.65rem', fontWeight: 700 }} />
@@ -184,7 +201,6 @@ const Cart = () => {
           )}
         </TableCell>
 
-        {/* Quantity stepper */}
         <TableCell align="center">
           {!isUnavailable ? (
             <Box>
@@ -221,21 +237,18 @@ const Cart = () => {
           )}
         </TableCell>
 
-        {/* Unit price — 4 decimal places per spec §2 */}
         <TableCell align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>
           {item.unitPriceInrScaled != null
             ? formatUnitPrice(item.unitPriceInrScaled, priceScale, '₹')
             : <Chip label="No price" size="small" color="warning" />}
         </TableCell>
 
-        {/* Line total */}
         <TableCell align="right" sx={{ fontWeight: 800, color: isUnavailable ? 'text.disabled' : 'primary.dark', fontSize: '0.9375rem' }}>
           {isUnavailable
             ? '—'
             : formatInr(item.lineTotalInrScaled, priceScale)}
         </TableCell>
 
-        {/* Actions */}
         <TableCell align="center">
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             {canFixQty && (
@@ -266,7 +279,6 @@ const Cart = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4, pb: 10 }}>
-      {/* ── Header ── */}
       <Box sx={{ mb: 4, borderBottom: '2px solid #243A5E', pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', textTransform: 'uppercase' }}>
@@ -289,7 +301,6 @@ const Cart = () => {
         </Box>
       </Box>
 
-      {/* ── Checkout blocked warning ── */}
       {checkoutBlocked && (
         <Alert severity="error" sx={{ mb: 3, fontWeight: 700 }}>
           ⛔ Checkout is blocked: {unavailableLineCount} line{unavailableLineCount > 1 ? 's' : ''} in your cart {unavailableLineCount > 1 ? 'are' : 'is'} unavailable.
@@ -298,7 +309,6 @@ const Cart = () => {
       )}
 
       <Grid container spacing={4}>
-        {/* ── Left: Items table ── */}
         <Grid size={{ xs: 12, lg: 8 }}>
           <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 1.5, border: '1px solid #D6E4EE', overflowX: 'auto' }}>
             <Table size="small">
@@ -313,10 +323,8 @@ const Cart = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {/* Available lines */}
                 {availableItems.map((item) => renderRow(item, false))}
 
-                {/* Separator when both groups present */}
                 {unavailableItems.length > 0 && availableItems.length > 0 && (
                   <TableRow>
                     <TableCell colSpan={6} sx={{ py: 1, bgcolor: '#FFF8F8', fontWeight: 800, color: 'error.main', fontSize: '0.75rem', textTransform: 'uppercase' }}>
@@ -325,13 +333,11 @@ const Cart = () => {
                   </TableRow>
                 )}
 
-                {/* Unavailable lines */}
                 {unavailableItems.map((item) => renderRow(item, true))}
               </TableBody>
             </Table>
           </TableContainer>
 
-          {/* Clear cart */}
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               size="small"
@@ -351,23 +357,78 @@ const Cart = () => {
           </Alert>
         </Grid>
 
-        {/* ── Right: Totals & checkout ── */}
         <Grid size={{ xs: 12, lg: 4 }}>
           <Paper elevation={0} sx={{ p: 3.5, borderRadius: 2, border: '2px solid #243A5E', bgcolor: '#ffffff' }}>
             <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 900, color: 'primary.main', textTransform: 'uppercase' }}>
               Procurement Valuation
             </Typography>
 
+            {/* Delivery Cost & Tax Split State Selector (Delivery GST Guide §5) */}
+            <Box sx={{ mb: 2.5, p: 2, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E2ECF5' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mb: 1 }}>
+                Select Shipping Destination for Delivery &amp; Tax Estimate:
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={stateCode}
+                onChange={handleStateChange}
+                sx={{ bgcolor: '#ffffff' }}
+              >
+                {GST_STATES.map((s) => (
+                  <MenuItem key={s.code} value={s.code}>
+                    {s.name} ({s.code}) {s.code === '24' ? '• Intra-State' : '• Inter-State'}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
               <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
-                Available lines ({availableLineCount}):
+                Goods Subtotal (ex-GST):
               </Typography>
               <Typography fontWeight={800} color="primary.main">
                 {formatInr(subtotalInrScaled, priceScale)}
               </Typography>
             </Box>
 
-            {/* Show display-currency equivalent when not INR */}
+            {/* Delivery Estimate Section (Delivery GST Guide §5) */}
+            {deliveryEstimate ? (
+              <>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Estimated Delivery (ex-GST):
+                  </Typography>
+                  <Typography fontWeight={700} color="text.primary">
+                    {deliveryEstimate.deliveryExGst != null 
+                      ? (typeof deliveryEstimate.deliveryExGst === 'number' 
+                          ? `₹${(deliveryEstimate.deliveryExGst / 100).toFixed(2)}`
+                          : `₹${deliveryEstimate.deliveryExGst}`)
+                      : '—'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Estimated GST ({deliveryEstimate.stateCode === '24' ? 'CGST+SGST' : 'IGST'}):
+                  </Typography>
+                  <Typography fontWeight={700} color="text.primary">
+                    {deliveryEstimate.deliveryGst != null
+                      ? (typeof deliveryEstimate.deliveryGst === 'number'
+                          ? `₹${(deliveryEstimate.deliveryGst / 100).toFixed(2)}`
+                          : `₹${deliveryEstimate.deliveryGst}`)
+                      : '—'}
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <Box sx={{ py: 1 }}>
+                <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                  Select an address at checkout to finalize delivery cost.
+                </Typography>
+              </Box>
+            )}
+
             {isNonInr && subtotalScaled != null && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
                 <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -390,17 +451,20 @@ const Cart = () => {
               </Box>
             )}
 
-            {/* INR charge notice (spec §1 — required at checkout entry) */}
             <Alert severity="info" icon={false} sx={{ mb: 2, py: 0.5, fontSize: '0.75rem', fontWeight: 700 }}>
-              You will be charged in INR: {formatInr(subtotalInrScaled, priceScale)}
+              Grand total includes goods + weight-based delivery + GST. Charged in INR.
             </Alert>
 
             <Divider sx={{ my: 2 }} />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-              <Typography variant="h6" fontWeight={900}>Net Order Total:</Typography>
+              <Typography variant="h6" fontWeight={900}>Estimated Total:</Typography>
               <Typography variant="h5" fontWeight={900} color="primary.main">
-                {formatInr(subtotalInrScaled, priceScale)}
+                {deliveryEstimate?.estimatedGrandTotal
+                  ? (typeof deliveryEstimate.estimatedGrandTotal === 'number' 
+                      ? `₹${(deliveryEstimate.estimatedGrandTotal / 10000).toFixed(2)}`
+                      : `₹${deliveryEstimate.estimatedGrandTotal}`)
+                  : formatInr(grandTotalInrScaled || subtotalInrScaled, priceScale)}
               </Typography>
             </Box>
 

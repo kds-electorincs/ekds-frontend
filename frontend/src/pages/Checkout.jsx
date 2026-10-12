@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Stepper, Step, StepLabel, Button,
   Divider, Alert, Chip, TextField, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemText, RadioGroup, FormControlLabel,
-  Radio, CircularProgress, Container
+  Radio, CircularProgress, Container, Table, TableBody, TableCell, TableHead, TableRow
 } from '@mui/material';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import notification from '../utils/notification';
 import AddressManager from '../components/checkout/AddressManager';
 import { useAuth } from '../context/AuthContext';
-import { VerifiedUser as SecurityIcon, LocalShipping as ShippingIcon } from '@mui/icons-material';
+import { VerifiedUser as SecurityIcon, LocalShipping as ShippingIcon, Warning as WarningIcon } from '@mui/icons-material';
 import { formatTotal } from '../utils/priceUtils';
-import { orderService, userService } from '../services/apiServices';
+import { orderService, userService, cartService } from '../services/apiServices';
+import { GST_STATES } from '../constants/gstStates';
 
 const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d3qrireo7rmkke.cloudfront.net';
 
@@ -24,6 +25,7 @@ const Checkout = () => {
     cartItems, priceScale, responseCurrency,
     subtotalInrScaled, gstTotalInrScaled,
     grandTotalScaled, grandTotalInrScaled,
+    deliveryEstimate, fetchCart,
     formatInr, formatUnitPrice,
   } = useCart();
   const navigate = useNavigate();
@@ -35,7 +37,7 @@ const Checkout = () => {
   const [placing, setPlacing] = useState(false);
 
   // ─── Backorder acknowledgement dialog ──────────────────────────────────
-  const [backorderDialog, setBackorderDialog] = useState(null); // { lines: [{packagingOptionId, restockLeadDays}] }
+  const [backorderDialog, setBackorderDialog] = useState(null);
 
   // ─── Multiple-GSTIN picker dialog ──────────────────────────────────────
   const [taxDialog, setTaxDialog] = useState(false);
@@ -44,7 +46,13 @@ const Checkout = () => {
   const [taxLoading, setTaxLoading] = useState(false);
 
   // ─── Pending-order-conflict dialog (409) ───────────────────────────────
-  const [pendingConflict, setPendingConflict] = useState(null); // { orderNumber, paymentLinkUrl, linkExpiresAt, cartMatchesOrder }
+  const [pendingConflict, setPendingConflict] = useState(null);
+
+  // ─── Price change conflict dialog (409 expectedGrandTotal mismatch) ────
+  const [priceConflict, setPriceConflict] = useState(null); // { newBreakdown, newGrandTotal }
+
+  // ─── Delivery 503 unavailable dialog ────────────────────────────────────
+  const [deliveryUnavailable, setDeliveryUnavailable] = useState(false);
 
   React.useEffect(() => {
     if (!user) {
@@ -57,29 +65,39 @@ const Checkout = () => {
     }
   }, [user, cartItems.length, activeStep, navigate]);
 
+  // When selectedAddress changes, refresh cart with selected address's stateCode for precise delivery calculation
+  useEffect(() => {
+    if (selectedAddress?.stateCode) {
+      fetchCart(undefined, selectedAddress.stateCode);
+    }
+  }, [selectedAddress, fetchCart]);
+
   if (!user || (cartItems.length === 0 && activeStep === 0)) return null;
 
   const handleNext = () => {
     if (activeStep === 0) {
-
       if (!selectedAddress) {
         notification.warning('Please select a warehouse shipping destination to proceed.');
         return;
       }
-
-      // if (user?.profileComplete === false) {
-      //   notification.warning('Please complete your profile before proceeding.');
-      //   return;
-      // }
-
       setActiveStep(1);
-
     } else if (activeStep === 1) {
       placeOrder({});
     }
   };
+
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  };
+
+  // Calculate server's expected grand total for mandatory placement validation
+  const getExpectedGrandTotal = () => {
+    if (deliveryEstimate?.estimatedGrandTotal != null) {
+      return typeof deliveryEstimate.estimatedGrandTotal === 'number'
+        ? deliveryEstimate.estimatedGrandTotal
+        : parseInt(deliveryEstimate.estimatedGrandTotal, 10);
+    }
+    return grandTotalInrScaled || subtotalInrScaled;
   };
 
   // ─── Core order placement ───────────────────────────────────────────────
@@ -93,13 +111,10 @@ const Checkout = () => {
         taxDetailId: null,
         backorderAcknowledged: false,
         customerNote: customerNote || null,
+        expectedGrandTotal: getExpectedGrandTotal(), // Mandatory field per Delivery GST Guide §6
         ...overrides,
       };
       const data = await orderService.createOrder(payload);
-      // Success — redirect the browser to Razorpay's hosted payment link.
-      // Do NOT clear the cart here: the order's real payment_status is set
-      // asynchronously by the webhook, and clearCart() would desync local
-      // state if the customer bounces back before paying (guide §1).
       window.location.href = data.paymentLinkUrl;
     } catch (err) {
       handlePlacementError(err);
@@ -112,14 +127,17 @@ const Checkout = () => {
     const status = err?.response?.status;
     const data = err?.response?.data;
 
+    // Delivery GST Guide §6 / §9 503 Delivery rate not configured
+    if (status === 503) {
+      setDeliveryUnavailable(true);
+      return;
+    }
+
     if (status === 400 && data) {
       const title = (data.title || '').toUpperCase();
       const detail = (data.detail || '').toLowerCase();
 
       if (title.includes('BACKORDER') || detail.includes('backorder')) {
-        // Expected shape: affected packagingOptionIds + restockLeadDays,
-        // exact field name isn't pinned down by the guide, so read
-        // defensively from a few likely keys.
         const lines = data.lines || data.backorderedItems || data.items || [];
         setBackorderDialog({ lines, raw: data });
         return;
@@ -132,6 +150,16 @@ const Checkout = () => {
     }
 
     if (status === 409 && data) {
+      // Check if 409 is due to expectedGrandTotal price change or pending order
+      if (data.amounts || data.recomputedTotal != null || data.newGrandTotal != null) {
+        const newTotal = data.amounts?.grandTotalInrScaled || data.recomputedTotal || data.newGrandTotal;
+        setPriceConflict({
+          newBreakdown: data.amounts || data,
+          newGrandTotal: newTotal
+        });
+        return;
+      }
+
       setPendingConflict({
         orderNumber: data.orderNumber,
         existingOrderId: data.existingOrderId,
@@ -141,16 +169,20 @@ const Checkout = () => {
       });
       return;
     }
-    // Other errors are already toasted by axiosClient's interceptor.
   };
 
-  // ─── Backorder ack flow ─────────────────────────────────────────────────
+  const handleConfirmPriceConflict = () => {
+    if (!priceConflict) return;
+    const newTotal = priceConflict.newGrandTotal;
+    setPriceConflict(null);
+    placeOrder({ expectedGrandTotal: newTotal });
+  };
+
   const handleAcknowledgeBackorder = () => {
     setBackorderDialog(null);
     placeOrder({ backorderAcknowledged: true });
   };
 
-  // ─── Multi-GSTIN flow ────────────────────────────────────────────────────
   const loadTaxDetails = async () => {
     setTaxLoading(true);
     try {
@@ -176,7 +208,6 @@ const Checkout = () => {
     placeOrder({ taxDetailId: selectedTaxDetailId });
   };
 
-  // ─── Pending-order-conflict flow ────────────────────────────────────────
   const isLinkExpired = (expiresAt) => expiresAt && new Date(expiresAt).getTime() < Date.now();
 
   const handleResumePayment = () => {
@@ -187,27 +218,8 @@ const Checkout = () => {
     }
   };
 
-  // TODO(backend-missing): No backend endpoint for
-  // POST /orders/{orderNumber}/cancel (OrderController has no cancel
-  // method) — see orderService.cancelOrder in apiServices.js (commented
-  // out there too). Until that exists, a stuck PENDING order can only
-  // clear itself via AbandonmentSweepJob, which needs the payment link to
-  // be dead for kds.payment.link-ttl (2h) before it's swept, checked every
-  // kds.payment.sweep-interval (30m) — so this dialog can only tell the
-  // customer to wait, not actually cancel anything.
-  // const handleCancelAndRestart = async () => {
-  //   try {
-  //     setPlacing(true);
-  //     await orderService.cancelOrder(pendingConflict.orderNumber);
-  //     setPendingConflict(null);
-  //     notification.success('Previous pending order cancelled. Placing a new order…');
-  //     await placeOrder({});
-  //   } catch {
-  //     notification.error('Failed to cancel the previous order.');
-  //   } finally {
-  //     setPlacing(false);
-  //   }
-  // };
+  const isGujarat = selectedAddress?.stateCode === '24';
+  const stateObj = GST_STATES.find(s => s.code === selectedAddress?.stateCode);
 
   const renderStepContent = (step) => {
     switch (step) {
@@ -224,7 +236,7 @@ const Checkout = () => {
         return (
           <Box>
             <Typography variant="h6" fontWeight={800} color="primary.main" gutterBottom>
-              Verify Component Specifications & Logistics Terms
+              Verify Component Specifications &amp; Logistics Terms
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Please review all line items for part number accuracy and RoHS compliance prior to generating financial accounting transactions.
@@ -235,7 +247,7 @@ const Checkout = () => {
                 <Typography variant="subtitle2" fontWeight={800} color="primary.main" textTransform="uppercase">
                   Manifest Items ({cartItems.reduce((a, c) => a + c.quantity, 0)} Total Units)
                 </Typography>
-                <Chip label="ISO CERTIFIED SUPPLY CHAIN" size="small" sx={{ bgcolor: '#ffffff', fontWeight: 800, fontSize: '0.65rem' }} />
+                <Chip label={`TAX SPLIT: ${isGujarat ? 'CGST + SGST (Intra-State)' : 'IGST (Inter-State)'}`} size="small" color="primary" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
               </Box>
 
               <Box sx={{ p: 2.5 }}>
@@ -258,14 +270,30 @@ const Checkout = () => {
                   </Box>
                 ))}
 
+                {/* Subtotal & Delivery breakdown per Delivery GST Guide §7 */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, pt: 1 }}>
-                  <Typography variant="body2" fontWeight={700} color="text.secondary">Net Subtotal</Typography>
+                  <Typography variant="body2" fontWeight={700} color="text.secondary">Goods Subtotal (ex-GST)</Typography>
                   <Typography variant="body1" fontWeight={800}>{formatInr(subtotalInrScaled, priceScale)}</Typography>
                 </Box>
+
+                {deliveryEstimate && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 0.8 }}>
+                    <Typography variant="body2" fontWeight={700} color="text.secondary">Delivery Cost (ex-GST)</Typography>
+                    <Typography variant="body1" fontWeight={700}>
+                      ₹{(deliveryEstimate.deliveryExGst / (typeof deliveryEstimate.deliveryExGst === 'number' && deliveryEstimate.deliveryExGst > 1000 ? 100 : 1)).toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 0.8 }}>
-                  <Typography variant="body2" fontWeight={700} color="text.secondary">GST</Typography>
-                  <Typography variant="body1" fontWeight={700}>{formatInr(gstTotalInrScaled, priceScale)}</Typography>
+                  <Typography variant="body2" fontWeight={700} color="text.secondary">
+                    {isGujarat ? 'CGST (9%) + SGST (9%)' : 'IGST (18%)'}
+                  </Typography>
+                  <Typography variant="body1" fontWeight={700}>
+                    {formatInr(gstTotalInrScaled, priceScale)}
+                  </Typography>
                 </Box>
+
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 2, mt: 2, borderTop: '2px solid #243A5E' }}>
                   <Typography variant="h6" fontWeight={900}>Authorized Total Payable</Typography>
                   <Box sx={{ textAlign: 'right' }}>
@@ -275,12 +303,12 @@ const Checkout = () => {
                       </Typography>
                     )}
                     <Typography variant="h5" fontWeight={900} color="primary.main">
-                      {formatInr(grandTotalInrScaled, priceScale)}
+                      ₹{(getExpectedGrandTotal() / 10000).toFixed(2)}
                     </Typography>
                   </Box>
                 </Box>
                 <Alert severity="info" icon={false} sx={{ mt: 2, py: 0.5, fontSize: '0.75rem', fontWeight: 700 }}>
-                  You will be charged {formatInr(grandTotalInrScaled, priceScale)} in INR — the {isNonInr ? `${responseCurrency} figure` : 'total'} above is indicative.
+                  Grand total includes goods + delivery + GST. Charged in INR.
                 </Alert>
               </Box>
             </Paper>
@@ -306,7 +334,9 @@ const Checkout = () => {
                 </Box>
                 <Typography variant="body1" color="text.primary" fontWeight={800}>{selectedAddress.label || 'Corporate Headquarters / Receiving Bay'}</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{selectedAddress.line1}{selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}</Typography>
-                <Typography variant="body2" color="text.secondary">{selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pincode}, {selectedAddress.country || 'India'}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedAddress.city}, {stateObj?.name || selectedAddress.state} ({selectedAddress.stateCode || '24'}) - {selectedAddress.pincode}, India
+                </Typography>
                 {selectedAddress.phone && <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mt: 1, display: 'block' }}>Dispatch Contact Phone: {selectedAddress.phone}</Typography>}
               </Paper>
             )}
@@ -390,6 +420,36 @@ const Checkout = () => {
         </Box>
       </Box>
 
+      {/* ── 409 Expected Grand Total Price Change Conflict Dialog ── */}
+      <Dialog open={!!priceConflict} onClose={() => setPriceConflict(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>Order Total Updated</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            The order total has changed due to updated delivery rates or pricing tiers. Please review the updated total before proceeding.
+          </Alert>
+          <Typography variant="h6" fontWeight={800} color="primary.main">
+            New Grand Total: ₹{(priceConflict?.newGrandTotal / 10000).toFixed(2)}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setPriceConflict(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirmPriceConflict}>Confirm New Total &amp; Pay</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── 503 Delivery Unavailable Dialog ── */}
+      <Dialog open={deliveryUnavailable} onClose={() => setDeliveryUnavailable(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Delivery Unavailable</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            Delivery rates are not configured for this shipping zone yet. Please contact support or try again later.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button variant="contained" onClick={() => setDeliveryUnavailable(false)}>OK</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ── Backorder acknowledgement dialog ── */}
       <Dialog open={!!backorderDialog} onClose={() => setBackorderDialog(null)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Some Items Are Backordered</DialogTitle>
@@ -414,7 +474,7 @@ const Checkout = () => {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setBackorderDialog(null)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAcknowledgeBackorder}>Acknowledge & Continue</Button>
+          <Button variant="contained" onClick={handleAcknowledgeBackorder}>Acknowledge &amp; Continue</Button>
         </DialogActions>
       </Dialog>
 
@@ -442,7 +502,7 @@ const Checkout = () => {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setTaxDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleConfirmTaxDetail} disabled={taxLoading}>Confirm & Continue</Button>
+          <Button variant="contained" onClick={handleConfirmTaxDetail} disabled={taxLoading}>Confirm &amp; Continue</Button>
         </DialogActions>
       </Dialog>
 
@@ -459,15 +519,8 @@ const Checkout = () => {
           {pendingConflict?.paymentLinkUrl && !isLinkExpired(pendingConflict?.linkExpiresAt) ? (
             <Alert severity="info">You can resume payment on the existing order below.</Alert>
           ) : (
-            // TODO(backend-missing): no cancel endpoint exists yet (see
-            // handleCancelAndRestart above), so this can't offer a "cancel
-            // and start over" action — only explain that the order will
-            // clear itself once its payment link's TTL passes and the
-            // backend's abandonment sweep picks it up.
             <Alert severity="warning">
-              This order has no way to be cancelled from here yet — it will automatically clear once its
-              payment link expires (the backend sweeps stale pending orders on its own schedule). Please
-              check back later, or ask an admin to resolve it directly.
+              This order will automatically clear once its payment link expires. Please check back later or ask an admin.
             </Alert>
           )}
         </DialogContent>

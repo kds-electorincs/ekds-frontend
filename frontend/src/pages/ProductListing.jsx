@@ -96,6 +96,11 @@ const ProductListing = () => {
       } else if (qParam || manufacturerParam || inStockParam) {
         try {
           response = await searchService.search({ q: qParam, manufacturer: manufacturerParam, inStock: inStockParam, currency: curr, size: Number(pageSize) || 50 });
+          const items = response?.content || response?.data?.content || response?.data || response?.products || response || [];
+          if (!Array.isArray(items) || items.length === 0) {
+            console.warn("Meilisearch returned 0 results, fallback to catalog database listing:");
+            response = await productPublicService.listProducts({ currency: curr, size: Number(pageSize) || 50 });
+          }
         } catch (e) {
           console.warn("Meilisearch offline, fallback to standard listing:", e);
           response = await productPublicService.listProducts({ currency: curr, size: Number(pageSize) || 50 });
@@ -175,12 +180,13 @@ const ProductListing = () => {
       const pName = (p.name || p.title || '').toLowerCase();
       const pMfr = (p.brand || p.manufacturer || '').toLowerCase();
       const pMpn = (p.partNumber || p.mpn || p.sku || '').toLowerCase();
+      const pCat = (typeof p.category === 'object' ? p.category?.name : (p.category || '')).toLowerCase();
       const query = (searchQuery || '').toLowerCase();
       const within = (searchWithin || '').toLowerCase();
       const stockVal = p.totalStock !== undefined ? p.totalStock : (p.stock || p.quantity || 0);
 
-      if (query && !pName.includes(query) && !pMfr.includes(query) && !pMpn.includes(query)) return false;
-      if (within && !pName.includes(within) && !pMfr.includes(within) && !pMpn.includes(within)) return false;
+      if (query && !pName.includes(query) && !pMfr.includes(query) && !pMpn.includes(query) && !pCat.includes(query)) return false;
+      if (within && !pName.includes(within) && !pMfr.includes(within) && !pMpn.includes(within) && !pCat.includes(within)) return false;
       if (inStockOnly && stockVal <= 0) return false;
       if (selectedBrands.length > 0 && !selectedBrands.includes(p.brand || p.manufacturer)) return false;
       return true;

@@ -154,7 +154,7 @@ axiosClient.interceptors.response.use(
       // not fatal — callers on price-fetching screens should retry or fall
       // back to INR; this toast just names what happened instead of the
       // generic 500 message.
-      toast.warning('Live pricing is temporarily unavailable for this currency. Retrying in INR…');
+      toast.warning('Live pricing is temporarily unavailable for this currency. Retrying in INR…', { toastId: 'fx-currency-warning-toast' });
     } else if (status >= 500) {
       toast.error('Server Error: Please try again later.');
     }

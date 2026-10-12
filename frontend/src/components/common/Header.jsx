@@ -104,13 +104,48 @@ const Header = () => {
       debounceTimeout.current = setTimeout(async () => {
         try {
           let items = [];
+          const extractItems = (res) => {
+            if (!res) return [];
+            if (Array.isArray(res)) return res;
+            if (Array.isArray(res.content)) return res.content;
+            if (Array.isArray(res.data?.content)) return res.data.content;
+            if (Array.isArray(res.products)) return res.products;
+            if (Array.isArray(res.data?.products)) return res.data.products;
+            if (Array.isArray(res.data)) return res.data;
+            return [];
+          };
+
           try {
-            const searchRes = await searchService.search({ q: val.trim(), currency: currency || 'INR', size: 6 });
-            items = searchRes?.content || searchRes?.data?.content || searchRes?.data || [];
+            const searchRes = await searchService.search({ q: val.trim(), size: 6 });
+            items = extractItems(searchRes);
           } catch (meiliErr) {
-            const res = await productService.getAllProducts({ search: val.trim(), limit: 6, currency: currency || 'INR' });
-            items = res?.data?.content || res?.data?.products || res?.data || [];
+            console.warn("Search service offline/failed, falling back to storefront products:", meiliErr);
           }
+
+          // Fallback if Meilisearch returned empty or failed
+          if (!items || items.length === 0) {
+            try {
+              let res;
+              try {
+                res = await productPublicService.listProducts({ size: 100 });
+              } catch (e503) {
+                res = await productPublicService.listProducts({ size: 100, currency: 'INR' });
+              }
+              const rawList = extractItems(res);
+              const qLower = val.trim().toLowerCase();
+              const filtered = rawList.filter(p => {
+                const pName = (p.name || p.title || '').toLowerCase();
+                const pMpn = (p.mpn || p.partNumber || p.sku || '').toLowerCase();
+                const pBrand = (p.brand || p.manufacturer || '').toLowerCase();
+                const pCat = (typeof p.category === 'object' ? p.category?.name : (p.category || '')).toLowerCase();
+                return pName.includes(qLower) || pMpn.includes(qLower) || pBrand.includes(qLower) || pCat.includes(qLower);
+              });
+              items = filtered.slice(0, 6);
+            } catch (fallbackErr) {
+              console.error("Fallback product search failed:", fallbackErr);
+            }
+          }
+
           setSuggestions(Array.isArray(items) ? items : []);
         } catch (err) {
           setSuggestions([]);
@@ -303,7 +338,7 @@ const Header = () => {
                             <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                                  {item.partNumber || item.mpn || item.name}
+                                  {item.mpn || item.partNumber || item.sku || item.name}{item.name && (item.mpn || item.partNumber || item.sku) ? ` — ${item.name}` : ''}
                                 </Typography>
                                 {item.fromPriceScaled != null && (
                                   <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.main' }}>

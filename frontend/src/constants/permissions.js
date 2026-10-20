@@ -15,6 +15,7 @@ export const PERMISSIONS = {
   MANAGE_CONFIG: 'manage_config',
   MANAGE_MAINTENANCE: 'manage_maintenance',
   MANAGE_DISCREPANCIES: 'manage_discrepancies',
+  MANAGE_DELIVERY_RATES: 'manage_delivery_rates',
 };
 
 export const ROLE_PERMISSIONS = {
@@ -42,6 +43,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_DASHBOARD,
     PERMISSIONS.MANAGE_ORDERS,
     PERMISSIONS.UPDATE_ORDER_STATUS,
+    PERMISSIONS.MANAGE_DELIVERY_RATES,
   ],
   
   [ROLES.ANALYTICS_MANAGER]: [

@@ -118,22 +118,22 @@ const AddressManager = ({ onSelectAddress, readOnly = false }) => {
 
   const handleSaveAddress = async (e) => {
     e.preventDefault();
-    if (!formData.line1 || !formData.city || !formData.stateCode || !formData.pincode) {
-      notification.warning('Please fill in all required fields.');
+    if (!formData.line1 || !formData.city || !formData.stateCode || !formData.pincode || !formData.phone) {
+      notification.warning('Please fill in all required fields (Address, City, State, Pincode, and Phone).');
       return;
     }
     try {
       setSubmitting(true);
       const payload = {
-        label: formData.label,
-        line1: formData.line1,
-        line2: formData.line2 || null,
-        city: formData.city,
-        stateCode: formData.stateCode, // Delivery GST Guide §4 breaking change
+        label: formData.label ? formData.label.trim() : 'Home',
+        line1: formData.line1.trim(),
+        line2: formData.line2 ? formData.line2.trim() : null,
+        city: formData.city.trim(),
+        stateCode: String(formData.stateCode).padStart(2, '0').trim(),
         country: 'IN',
-        pincode: formData.pincode,
-        phone: formData.phone || null,
-        isDefault: formData.makeDefault
+        pincode: formData.pincode.trim(),
+        phone: formData.phone.trim(),
+        makeDefault: Boolean(formData.makeDefault)
       };
 
       if (editingId) {

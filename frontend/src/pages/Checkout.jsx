@@ -11,11 +11,11 @@ import notification from '../utils/notification';
 import AddressManager from '../components/checkout/AddressManager';
 import { useAuth } from '../context/AuthContext';
 import { VerifiedUser as SecurityIcon, LocalShipping as ShippingIcon, Warning as WarningIcon } from '@mui/icons-material';
-import { formatTotal } from '../utils/priceUtils';
+import { formatTotal, formatPaisaToRupee } from '../utils/priceUtils';
 import { orderService, userService, cartService } from '../services/apiServices';
 import { GST_STATES } from '../constants/gstStates';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d3qrireo7rmkke.cloudfront.net';
+const CDN_BASE = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_CDN_BASE_URL) || 'https://d3qrireo7rmkke.cloudfront.net';
 
 const steps = ['Corporate Shipping Destination', 'Order Verification & Terms', 'Gateway Authorization'];
 
@@ -53,6 +53,9 @@ const Checkout = () => {
 
   // ─── Delivery 503 unavailable dialog ────────────────────────────────────
   const [deliveryUnavailable, setDeliveryUnavailable] = useState(false);
+
+  // ─── Payment gateway 502 error dialog ───────────────────────────────────
+  const [gatewayError, setGatewayError] = useState(null);
 
   React.useEffect(() => {
     if (!user) {
@@ -130,6 +133,12 @@ const Checkout = () => {
     // Delivery GST Guide §6 / §9 503 Delivery rate not configured
     if (status === 503) {
       setDeliveryUnavailable(true);
+      return;
+    }
+
+    // 502 Bad Gateway: Upstream payment gateway (Razorpay) error / unconfigured
+    if (status === 502) {
+      setGatewayError(data?.detail || 'Payment gateway connection failed. Please ensure the payment gateway is configured.');
       return;
     }
 
@@ -277,12 +286,24 @@ const Checkout = () => {
                 </Box>
 
                 {deliveryEstimate && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 0.8 }}>
-                    <Typography variant="body2" fontWeight={700} color="text.secondary">Delivery Cost (ex-GST)</Typography>
-                    <Typography variant="body1" fontWeight={700}>
-                      ₹{(deliveryEstimate.deliveryExGst / (typeof deliveryEstimate.deliveryExGst === 'number' && deliveryEstimate.deliveryExGst > 1000 ? 100 : 1)).toFixed(2)}
-                    </Typography>
-                  </Box>
+                  <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 0.8 }}>
+                      <Typography variant="body2" fontWeight={700} color="text.secondary">Consignment Weight</Typography>
+                      <Typography variant="body2" fontWeight={700}>
+                        {deliveryEstimate.totalWeightG != null 
+                          ? (deliveryEstimate.totalWeightG >= 1000 
+                              ? `${(deliveryEstimate.totalWeightG / 1000).toFixed(2)} kg (${deliveryEstimate.totalWeightG} g)` 
+                              : `${deliveryEstimate.totalWeightG} g`)
+                          : '—'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 0.8 }}>
+                      <Typography variant="body2" fontWeight={700} color="text.secondary">Delivery Cost (ex-GST)</Typography>
+                      <Typography variant="body1" fontWeight={700}>
+                        {formatPaisaToRupee(deliveryEstimate.deliveryExGst)}
+                      </Typography>
+                    </Box>
+                  </>
                 )}
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 0.8 }}>
@@ -447,6 +468,27 @@ const Checkout = () => {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button variant="contained" onClick={() => setDeliveryUnavailable(false)}>OK</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── 502 Payment Gateway Error Dialog ── */}
+      <Dialog open={!!gatewayError} onClose={() => setGatewayError(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="error" /> Payment Gateway Unavailable (502)
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body1" sx={{ mb: 2, fontWeight: 600 }}>
+            {gatewayError}
+          </Typography>
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            The order could not be placed because the server's payment link generator (Razorpay) failed to initiate a transaction.
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            For development or testing, ensure <code>KDS_RAZORPAY_KEY_ID</code> and <code>KDS_RAZORPAY_KEY_SECRET</code> are provided in the backend's environment variables.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button variant="contained" onClick={() => setGatewayError(null)}>OK</Button>
         </DialogActions>
       </Dialog>
 

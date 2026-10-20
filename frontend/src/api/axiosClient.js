@@ -2,9 +2,12 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Create base instance
+const baseURL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL)
+  || (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_API_BASE_URL || process.env?.VITE_API_BASE_URL))
+  || 'http://localhost:8080/api';
+
 const axiosClient = axios.create({
-  // baseURL: import.meta.env.VITE_API_BASE_URL || 'https://d33txvk614c5de.cloudfront.net',
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  baseURL,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -155,8 +158,10 @@ axiosClient.interceptors.response.use(
       // back to INR; this toast just names what happened instead of the
       // generic 500 message.
       toast.warning('Live pricing is temporarily unavailable for this currency. Retrying in INR…', { toastId: 'fx-currency-warning-toast' });
+    } else if (status === 502) {
+      toast.error(errorMsg || 'Payment Gateway Error: Upstream service unavailable or not configured.');
     } else if (status >= 500) {
-      toast.error('Server Error: Please try again later.');
+      toast.error(errorMsg || 'Server Error: Please try again later.');
     }
 
     return Promise.reject(error);

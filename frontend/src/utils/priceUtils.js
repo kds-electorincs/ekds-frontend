@@ -66,3 +66,31 @@ export function computeLineTotal(unitScaled, scale, qty) {
   const unit = Number((unitScaled / 10 ** scale).toFixed(4));
   return unit * qty;
 }
+
+/**
+ * Converts an amount from paise to rupees.
+ * 1 Rupee = 100 Paise.
+ * Handles both raw paise (e.g. 4000 -> 40) and scaled backend paise (e.g. 400000 -> 40).
+ */
+export function paisaToRupee(paise) {
+  if (paise == null) return 0;
+  const num = typeof paise === 'number' ? paise : parseFloat(paise);
+  if (isNaN(num)) return 0;
+  return num >= 10000 ? num / 10000 : num / 100;
+}
+
+/**
+ * Formats a paise amount into INR Rupees string with currency symbol.
+ * Example: 4000 paise -> "₹40.00", 400000 scaled paise -> "₹40.00"
+ */
+export function formatPaisaToRupee(paise, symbol = '₹') {
+  if (paise == null) return '—';
+  const num = typeof paise === 'number' ? paise : parseFloat(paise);
+  if (isNaN(num)) return '—';
+  const rupees = num >= 10000 ? num / 10000 : num / 100;
+  return `${symbol}${rupees.toFixed(2)}`;
+}
+
+export const formatDeliveryToRupees = formatPaisaToRupee;
+
+

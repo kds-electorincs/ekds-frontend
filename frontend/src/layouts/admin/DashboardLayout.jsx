@@ -15,6 +15,7 @@ import {
   Settings as SettingsIcon,
   Build as BuildIcon,
   Warning as WarningIcon,
+  LocalShipping as LocalShippingIcon,
 } from '@mui/icons-material';
 import { Link as RouterLink, Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -48,7 +49,7 @@ const DashboardLayout = () => {
     { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories', permission: PERMISSIONS.MANAGE_CATEGORIES },
     { text: 'Products', icon: <InventoryIcon />, path: '/admin/products', permission: PERMISSIONS.MANAGE_PRODUCTS },
     { text: 'Orders', icon: <ShoppingCartIcon />, path: '/admin/orders', permission: PERMISSIONS.MANAGE_ORDERS },
-    { text: 'Delivery Rates', icon: <BuildIcon />, path: '/admin/delivery-rates', permission: PERMISSIONS.MANAGE_STAFF },
+    { text: 'Delivery Rates', icon: <LocalShippingIcon />, path: '/admin/delivery-rates', permission: PERMISSIONS.MANAGE_DELIVERY_RATES },
     { text: 'Privacy & DPDP', icon: <SecurityIcon />, path: '/admin/privacy', permission: PERMISSIONS.VIEW_USERS },
     { text: 'Staff & RBAC', icon: <SecurityIcon />, path: '/admin/staff', permission: PERMISSIONS.MANAGE_STAFF },
     { text: 'Discrepancies', icon: <WarningIcon />, path: '/admin/discrepancies', permission: PERMISSIONS.MANAGE_DISCREPANCIES },

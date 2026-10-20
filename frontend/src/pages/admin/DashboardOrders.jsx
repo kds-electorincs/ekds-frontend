@@ -4,7 +4,7 @@ import {
   TableContainer, TableHead, TableRow, TablePagination,
   TextField, InputAdornment, Chip, MenuItem, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
-  Grid, CircularProgress
+  Grid, CircularProgress, Divider
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -294,6 +294,102 @@ const DashboardOrders = () => {
                   </Table>
                 </TableContainer>
               )}
+
+              {/* Weight & Billing Breakdown (Delivery GST Guide §7) */}
+              {(() => {
+                const amounts = selectedOrder.amounts || {};
+                const totalWeightG = amounts.totalWeightG ?? selectedOrder.totalWeightG ?? null;
+                const deliveryZone = amounts.deliveryZone ?? selectedOrder.deliveryZone ?? null;
+                const ratePerKg = amounts.ratePerKgRupees ?? selectedOrder.deliveryRatePerKgRupees ?? null;
+                const shippingAddress = selectedOrder.shippingAddress || (selectedOrder.addresses?.find(a => a.addressType === 'SHIPPING')) || selectedOrder.address;
+                const isGujarat = shippingAddress?.stateCode === '24' || (amounts.cgstInrScaled != null && amounts.cgstInrScaled > 0);
+
+                const goodsSubtotal = ((amounts.goodsSubtotalInrScaled ?? selectedOrder.subtotalInrScaled ?? 0) / 10000).toFixed(2);
+                const deliveryExGst = ((amounts.deliveryExGstInrScaled ?? selectedOrder.deliveryExGstInrScaled ?? 0) / 10000).toFixed(2);
+                const cgst = ((amounts.cgstInrScaled ?? 0) / 10000).toFixed(2);
+                const sgst = ((amounts.sgstInrScaled ?? 0) / 10000).toFixed(2);
+                const igst = ((amounts.igstInrScaled ?? 0) / 10000).toFixed(2);
+                const grandTotal = ((amounts.grandTotalInrScaled ?? selectedOrder.grandTotalInrScaled ?? 0) / 10000).toFixed(2);
+
+                return (
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%', bgcolor: '#f8fafc' }}>
+                        <Typography variant="subtitle2" fontWeight={800} color="primary.main" gutterBottom>
+                          SHIPPING &amp; LOGISTICS DATA
+                        </Typography>
+                        {shippingAddress ? (
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="body2" fontWeight={700}>
+                              {shippingAddress.line1}{shippingAddress.line2 ? `, ${shippingAddress.line2}` : ''}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {shippingAddress.city}, {shippingAddress.state} ({shippingAddress.stateCode || '—'}) - {shippingAddress.pincode}
+                            </Typography>
+                            {shippingAddress.phone && (
+                              <Typography variant="caption" color="text.secondary">
+                                Phone: {shippingAddress.phone}
+                              </Typography>
+                            )}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">Address details pending</Typography>
+                        )}
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">Consignment Weight:</Typography>
+                          <Typography variant="caption" fontWeight={700}>
+                            {totalWeightG != null ? `${totalWeightG} g (${(totalWeightG / 1000).toFixed(2)} kg)` : '—'}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">Delivery Zone &amp; Rate:</Typography>
+                          <Typography variant="caption" fontWeight={700}>
+                            {deliveryZone ? `${deliveryZone} (Rs ${ratePerKg != null ? Number(ratePerKg).toFixed(2) : '—'}/kg)` : '—'}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%', bgcolor: '#f8fafc' }}>
+                        <Typography variant="subtitle2" fontWeight={800} color="primary.main" gutterBottom>
+                          FINANCIAL BILLING BREAKDOWN
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">Goods Subtotal (ex-GST):</Typography>
+                          <Typography variant="caption" fontWeight={700}>₹{goodsSubtotal}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">Delivery Fee (ex-GST):</Typography>
+                          <Typography variant="caption" fontWeight={700}>₹{deliveryExGst}</Typography>
+                        </Box>
+                        {isGujarat ? (
+                          <>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">CGST:</Typography>
+                              <Typography variant="caption" fontWeight={700}>₹{cgst}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">SGST:</Typography>
+                              <Typography variant="caption" fontWeight={700}>₹{sgst}</Typography>
+                            </Box>
+                          </>
+                        ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">IGST:</Typography>
+                            <Typography variant="caption" fontWeight={700}>₹{igst}</Typography>
+                          </Box>
+                        )}
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" fontWeight={800} color="primary.main">Grand Total (Charged):</Typography>
+                          <Typography variant="body2" fontWeight={800} color="primary.main">₹{grandTotal}</Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                );
+              })()}
             </Box>
           ) : null}
         </DialogContent>

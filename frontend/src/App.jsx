@@ -177,7 +177,7 @@ function App() {
           } />
           
           <Route path="delivery-rates" element={
-            <PermissionRoute permission={PERMISSIONS.MANAGE_STAFF}>
+            <PermissionRoute permission={PERMISSIONS.MANAGE_DELIVERY_RATES}>
               <DashboardDeliveryRates />
             </PermissionRoute>
           } />

@@ -21,12 +21,11 @@ import { useCart } from '../context/CartContext';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import EmptyState from '../components/common/EmptyState';
 import notification from '../utils/notification';
-import { useAuth } from '../context/AuthContext';
-import { formatTotal } from '../utils/priceUtils';
+import { formatTotal, formatPaisaToRupee } from '../utils/priceUtils';
 import { GST_STATES } from '../constants/gstStates';
 import { userService } from '../services/apiServices';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_CDN_BASE_URL) || 'https://d1sswqar085ync.cloudfront.net';
 
 const REASON_UI = {
   PACKAGING_INACTIVE: { label: 'No longer available', color: 'error' },
@@ -398,14 +397,22 @@ const Cart = () => {
               <>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
                   <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Consignment Weight:
+                  </Typography>
+                  <Typography fontWeight={700} color="text.primary">
+                    {deliveryEstimate.totalWeightG != null 
+                      ? (deliveryEstimate.totalWeightG >= 1000 
+                          ? `${(deliveryEstimate.totalWeightG / 1000).toFixed(2)} kg (${deliveryEstimate.totalWeightG} g)` 
+                          : `${deliveryEstimate.totalWeightG} g`)
+                      : '—'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
                     Estimated Delivery (ex-GST):
                   </Typography>
                   <Typography fontWeight={700} color="text.primary">
-                    {deliveryEstimate.deliveryExGst != null 
-                      ? (typeof deliveryEstimate.deliveryExGst === 'number' 
-                          ? `₹${(deliveryEstimate.deliveryExGst / 100).toFixed(2)}`
-                          : `₹${deliveryEstimate.deliveryExGst}`)
-                      : '—'}
+                    {formatPaisaToRupee(deliveryEstimate.deliveryExGst)}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
@@ -413,11 +420,7 @@ const Cart = () => {
                     Estimated GST ({deliveryEstimate.stateCode === '24' ? 'CGST+SGST' : 'IGST'}):
                   </Typography>
                   <Typography fontWeight={700} color="text.primary">
-                    {deliveryEstimate.deliveryGst != null
-                      ? (typeof deliveryEstimate.deliveryGst === 'number'
-                          ? `₹${(deliveryEstimate.deliveryGst / 100).toFixed(2)}`
-                          : `₹${deliveryEstimate.deliveryGst}`)
-                      : '—'}
+                    {formatPaisaToRupee(deliveryEstimate.deliveryGst)}
                   </Typography>
                 </Box>
               </>
@@ -461,9 +464,7 @@ const Cart = () => {
               <Typography variant="h6" fontWeight={900}>Estimated Total:</Typography>
               <Typography variant="h5" fontWeight={900} color="primary.main">
                 {deliveryEstimate?.estimatedGrandTotal
-                  ? (typeof deliveryEstimate.estimatedGrandTotal === 'number' 
-                      ? `₹${(deliveryEstimate.estimatedGrandTotal / 10000).toFixed(2)}`
-                      : `₹${deliveryEstimate.estimatedGrandTotal}`)
+                  ? `₹${(Number(deliveryEstimate.estimatedGrandTotal) / 10000).toFixed(2)}`
                   : formatInr(grandTotalInrScaled || subtotalInrScaled, priceScale)}
               </Typography>
             </Box>

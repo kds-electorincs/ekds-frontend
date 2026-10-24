@@ -18,6 +18,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../constants/roles';
 import { PERMISSIONS } from '../../constants/permissions';
+import { adminManagementService } from '../../services/apiServices';
 
 const initialUsers = [];
 const initialPendingB2B = [];
@@ -107,10 +108,18 @@ const DashboardUsers = () => {
     setOpenEditModal(true);
   };
 
-  const handleUpdateUser = () => {
+  const handleUpdateUser = async () => {
     if (!editForm.name || !editForm.email) {
       toast.error('Please fill in Name and Email');
       return;
+    }
+    const isEnabled = editForm.status === 'Active';
+    try {
+      if (selectedUser?.id && typeof selectedUser.id === 'number') {
+        await adminManagementService.setUserEnabled(selectedUser.id, isEnabled);
+      }
+    } catch (err) {
+      console.warn('Backend setUserEnabled error:', err);
     }
     setUsers(prev => prev.map(u => {
       if (u.id === selectedUser.id) {

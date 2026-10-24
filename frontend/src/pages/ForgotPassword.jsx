@@ -21,7 +21,19 @@ const ForgotPassword = () => {
   const [step, setStep] = useState(1); // Step 1: Request OTP, Step 2: Verify OTP
   const [userEmail, setUserEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [failedOtpAttempts, setFailedOtpAttempts] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const { register: registerStep1, handleSubmit: handleSubmitStep1, formState: { errors: errorsStep1 } } = useForm({
     resolver: yupResolver(requestSchema)
@@ -33,10 +45,13 @@ const ForgotPassword = () => {
 
   const onRequestOtp = async (data) => {
     setLoading(true);
+    setVerifyError('');
+    setFailedOtpAttempts(0);
     try {
       await authService.requestPasswordReset(data.email);
       setUserEmail(data.email);
       setStep(2);
+      setResendCooldown(60);
       notification.success('OTP sent! Please check your email inbox.');
     } catch (error) {
       console.error('OTP request failed:', error);
@@ -45,8 +60,27 @@ const ForgotPassword = () => {
     }
   };
 
+  const handleSendNewCode = async () => {
+    if (!userEmail || resending || resendCooldown > 0) return;
+    setResending(true);
+    setVerifyError('');
+    try {
+      await authService.requestPasswordReset(userEmail);
+      notification.success('A fresh OTP code has been sent to your email.');
+      setFailedOtpAttempts(0);
+      setResendCooldown(60);
+    } catch (error) {
+      console.error('Failed to resend reset OTP:', error);
+      const msg = error?.response?.data?.detail || error?.response?.data?.title || 'Unable to send new OTP code.';
+      setVerifyError(msg);
+    } finally {
+      setResending(false);
+    }
+  };
+
   const onVerifyOtp = async (data) => {
     setLoading(true);
+    setVerifyError('');
     try {
       await authService.verifyPasswordReset({
         email: userEmail,
@@ -57,6 +91,10 @@ const ForgotPassword = () => {
       navigate('/login');
     } catch (error) {
       console.error('OTP verification failed:', error);
+      const res = error?.response?.data;
+      const msg = res?.detail || res?.title || 'Invalid or expired OTP.';
+      setVerifyError(msg);
+      setFailedOtpAttempts((prev) => prev + 1);
     } finally {
       setLoading(false);
     }
@@ -107,6 +145,31 @@ const ForgotPassword = () => {
           </form>
         ) : (
           <form onSubmit={handleSubmitStep2(onVerifyOtp)}>
+            {verifyError && (
+              <Alert 
+                severity="error" 
+                sx={{ mb: 3, borderRadius: 2 }}
+                action={
+                  <Button 
+                    color="inherit" 
+                    size="small" 
+                    onClick={handleSendNewCode} 
+                    disabled={resending || resendCooldown > 0} 
+                    sx={{ fontWeight: 800, textTransform: 'none' }}
+                  >
+                    {resendCooldown > 0 ? `Wait ${resendCooldown}s` : 'Send a new code'}
+                  </Button>
+                }
+              >
+                {verifyError}
+                {failedOtpAttempts >= 2 && (
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                    After 3 failed attempts the code is invalidated for security. Please send a new code.
+                  </Typography>
+                )}
+              </Alert>
+            )}
+
             <Box sx={{ mb: 2 }}>
               <TextField
                 fullWidth
@@ -152,9 +215,17 @@ const ForgotPassword = () => {
               {loading ? 'Resetting Password...' : 'Verify OTP & Reset Password'}
             </Button>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-              <Button size="small" onClick={() => setStep(1)} sx={{ fontWeight: 600 }}>
-                Resend OTP / Change Email
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3 }}>
+              <Button 
+                size="small" 
+                onClick={handleSendNewCode} 
+                disabled={resending || resendCooldown > 0}
+                sx={{ fontWeight: 700, textTransform: 'none' }}
+              >
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Send a new code'}
+              </Button>
+              <Button size="small" onClick={() => setStep(1)} sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'none' }}>
+                Change Email
               </Button>
               <Link component={RouterLink} to="/login" sx={{ fontWeight: 600, textDecoration: 'none', alignSelf: 'center' }}>
                 Back to Login

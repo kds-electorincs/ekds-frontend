@@ -7,7 +7,6 @@ import {
   Receipt as ReceiptIcon,
   Payment as PaymentIcon,
   AccountBalanceWallet as WalletIcon,
-  Favorite as FavoriteIcon,
   Person as PersonIcon,
   LocationOn as LocationIcon,
   Notifications as NotificationsIcon,
@@ -42,7 +41,6 @@ const UserDashboardLayout = () => {
       items: [
         { text: 'Dashboard Home', icon: <DashboardIcon sx={{ fontSize: 18 }} />, path: '/user/dashboard' },
         { text: 'Quotations & Lists', icon: <ReceiptIcon sx={{ fontSize: 18 }} />, path: '/user/quotations' },
-        { text: 'Favorites', icon: <FavoriteIcon sx={{ fontSize: 18 }} />, path: '/user/favorites' },
       ]
     },
     {

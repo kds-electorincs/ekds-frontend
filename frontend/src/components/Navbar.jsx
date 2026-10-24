@@ -11,7 +11,6 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   AccountCircle as AccountCircleIcon,
   ShoppingCart as ShoppingCartIcon,
-  FavoriteBorder as FavoriteIcon,
   Description as QuoteIcon,
   ExitToApp as ExitToAppIcon,
   Dashboard as DashboardIcon,
@@ -323,7 +322,7 @@ const Navbar = () => {
             </ClickAwayListener>
           </Box>
 
-          {/* Action Hub: Quotations, Wishlist, Cart & Account */}
+          {/* Action Hub: Quotations, Cart & Account */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1.5 } }}>
             
             <Tooltip title="B2B Quotations & BOM Requests">
@@ -332,11 +331,6 @@ const Navbar = () => {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Saved Industrial Favorites">
-              <IconButton component={RouterLink} to={user ? "/user/favorites" : "/login"} sx={{ color: 'primary.main' }} aria-label="view saved favorite products">
-                <FavoriteIcon />
-              </IconButton>
-            </Tooltip>
 
             <Tooltip title="Procurement Cart">
               <IconButton onClick={toggleCartDrawer} sx={{ color: 'primary.main' }} aria-label={`open procurement cart with ${cartItemCount || 0} items`}>

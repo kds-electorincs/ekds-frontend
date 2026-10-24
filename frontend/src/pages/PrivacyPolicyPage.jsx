@@ -12,6 +12,19 @@ const PrivacyPolicy = () => {
     privacyService.getContact().then((res) => setOfficerContact(res)).catch(() => {});
   }, []);
 
+  const isPlaceholder = (val) => {
+    if (!val || typeof val !== 'string') return true;
+    const upper = val.toUpperCase();
+    return upper.includes('PLACEHOLDER') || upper.includes('.INVALID');
+  };
+
+  const dpoName = !isPlaceholder(officerContact?.name) ? officerContact.name : 'Jaimeen Vasa (Grievance Officer)';
+  const dpoEmail = !isPlaceholder(officerContact?.email) ? officerContact.email : 'dpo@kdselectronics.com';
+  const dpoPhone = !isPlaceholder(officerContact?.phone) ? officerContact.phone : '+91 99258 01333';
+  const dpoAddress = !isPlaceholder(officerContact?.address)
+    ? officerContact.address
+    : 'K&DS Electronic Limited, MM Enterprise, 7-Maninagar Main Rd, near Ashok Garden, Mavadi Plot, Rajkot, Gujarat 360004';
+
   return (
     <Box sx={{ py: 6, bg: 'background.default' }}>
       <Container maxWidth="md">
@@ -47,10 +60,10 @@ const PrivacyPolicy = () => {
           </Typography>
           <Typography variant="body1" paragraph color="text.secondary">
             <strong>Data Fiduciary:</strong> KDS Electronics Industrial Supply Ltd.<br />
-            <strong>Registered Address:</strong> {officerContact?.address || 'K&DS Electronic Limited, MM Enterprise, Maruti Munchies, 7- Mani nagar, Rajkot, Gujarat 360004'}<br />
-            <strong>Data Protection Officer (DPO):</strong> {officerContact?.name || 'Data Protection Officer'}<br />
-            <strong>DPO Email:</strong> <Link href={`mailto:${officerContact?.email || 'sales@kdselectronics.com'}`}>{officerContact?.email || 'sales@kdselectronics.com'}</Link><br />
-            <strong>DPO Hotline:</strong> {officerContact?.phone || '+91 99258 01333'}
+            <strong>Registered Address:</strong> {dpoAddress}<br />
+            <strong>Data Protection Officer (DPO):</strong> {dpoName}<br />
+            <strong>DPO Email:</strong> <Link href={`mailto:${dpoEmail}`}>{dpoEmail}</Link><br />
+            <strong>DPO Hotline:</strong> {dpoPhone}
           </Typography>
 
           {/* Section 2 */}

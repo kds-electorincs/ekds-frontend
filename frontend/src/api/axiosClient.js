@@ -6,13 +6,16 @@ const baseURL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_AP
   || (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_API_BASE_URL || process.env?.VITE_API_BASE_URL))
   || 'http://localhost:8080/api';
 
+if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+  console.log('[API Base URL]:', baseURL);
+}
+
 const axiosClient = axios.create({
   baseURL,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
-  // Removed withCredentials: true as we're explicitly passing tokens now
 });
 
 let isRefreshing = false;
@@ -66,9 +69,17 @@ axiosClient.interceptors.response.use(
 
     const { status, data } = error.response;
 
-    // Handle 401 Unauthorized or 403 on protected endpoints (Known Backend Quirk for /users/me/**)
-    const isProtectedCall = originalRequest.url && originalRequest.url.includes('/users/me');
-    if ((status === 401 || (status === 403 && isProtectedCall)) && !originalRequest._retry) {
+    // Check if error is EMAIL_NOT_VERIFIED (V033) - do NOT treat as session expiration
+    const isEmailNotVerified = data?.title === 'EMAIL_NOT_VERIFIED';
+    const hasToken = Boolean(getAccessTokenFn() || sessionStorage.getItem('token') || sessionStorage.getItem('refreshToken'));
+
+    // Handle 401 Unauthorized or 403 on protected endpoints when tokens are revoked/expired
+    const isProtectedCall = originalRequest.url && (
+      originalRequest.url.includes('/users/me') || 
+      (hasToken && !originalRequest.url.includes('/public') && !originalRequest.url.includes('/store') && !originalRequest.url.includes('/search'))
+    );
+
+    if ((status === 401 || (status === 403 && isProtectedCall && !isEmailNotVerified)) && !originalRequest._retry) {
       if (originalRequest.url.includes('/auth/refresh') || originalRequest.url.includes('/auth/login')) {
         return Promise.reject(error);
       }
@@ -95,7 +106,7 @@ axiosClient.interceptors.response.use(
         // Call backend token refresh endpoint with body payload
         const refreshResponse = await axiosClient.post('/auth/refresh', { refreshToken: storedRefreshToken });
         const { accessToken, refreshToken } = refreshResponse;
-        
+
         setAccessTokenFn(accessToken);
         if (refreshToken) {
           sessionStorage.setItem('refreshToken', refreshToken);
@@ -114,7 +125,7 @@ axiosClient.interceptors.response.use(
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-        // Dispatch custom event to trigger logout redirect in context
+        // Dispatch custom event to trigger clean logout redirect in context
         window.dispatchEvent(new Event('auth-expired'));
         return Promise.reject(refreshError);
       }
@@ -132,24 +143,14 @@ axiosClient.interceptors.response.use(
     }
 
     if (status === 403) {
-      // KDS spec §9 known backend defect (currency guide §8):
-      // 403 with an EMPTY body = malformed request (e.g. a missing/invalid
-      // ?currency= on a public /api/store/* or /api/search/* endpoint), NOT
-      // a permissions failure. Do NOT show "Access Denied" or log the user
-      // out — it would be misleading. Only show the Access Denied toast when
-      // the response body has actual content (a real problem+json auth
-      // failure on an authenticated endpoint always has one).
-      // Note: this branch runs regardless of the 401/403-refresh branch
-      // above, which itself only ever retries on a 403 whose URL matches
-      // isProtectedCall (currently just /users/me) — /store/* and /search/*
-      // never match that, so they never reach the refresh flow at all, empty
-      // body or not.
-      const hasBody = data && (typeof data === 'object' ? Object.keys(data).length > 0 : String(data).trim().length > 0);
-      if (hasBody) {
-        toast.error('Access Denied: You do not have permission.');
+      // If this is EMAIL_NOT_VERIFIED, skip the generic "Access Denied" toast so the checkout/verify screen handles it cleanly
+      if (!isEmailNotVerified) {
+        const hasBody = data && (typeof data === 'object' ? Object.keys(data).length > 0 : String(data).trim().length > 0);
+        if (hasBody) {
+          toast.error('Access Denied: You do not have permission.');
+        }
       }
-      // Empty-body 403 → suppress toast; caller handles the rejection.
-    } else if (status === 422 || status === 400 || status === 409) {
+    } else if (status === 422 || status === 400 || status === 409 || status === 429) {
       toast.warning(errorMsg);
     } else if (status === 503) {
       // Currency guide §8: no FX rate available for the requested currency

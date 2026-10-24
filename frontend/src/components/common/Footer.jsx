@@ -30,8 +30,20 @@ const Footer = () => {
   React.useEffect(() => {
     privacyService.getContact()
       .then((res) => setOfficerContact(res))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
+
+  const isPlaceholder = (val) => {
+    if (!val || typeof val !== 'string') return true;
+    const upper = val.toUpperCase();
+    return upper.includes('PLACEHOLDER') || upper.includes('.INVALID');
+  };
+
+  const dpoEmail = !isPlaceholder(officerContact?.email) ? officerContact.email : 'Prakash@kdselectronics.com';
+  const dpoPhone = !isPlaceholder(officerContact?.phone) ? officerContact.phone : '+91 99258 01333';
+  const dpoAddress = !isPlaceholder(officerContact?.address)
+    ? officerContact.address
+    : 'K&DS Electronic Limited, MM Enterprise, 7-Maninagar Main Rd, near Ashok Garden, Mavadi Plot, Rajkot, Gujarat 360004';
 
   const handleSubscribe = (e) => {
     e.preventDefault();
@@ -186,22 +198,22 @@ const Footer = () => {
               KDS Electronics is a premier franchised distributor of active, passive, and electromechanical components serving electronics OEMs, contract manufacturers, and research institutions worldwide.
             </Typography>
             <Stack direction="row" spacing={1}>
-              <IconButton 
-                component="a" 
-                href="https://www.linkedin.com/company/kds-electronics/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                size="small" 
+              <IconButton
+                component="a"
+                href="https://www.linkedin.com/company/kds-electronics/"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
                 sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}
               >
                 <LinkedInIcon fontSize="small" />
               </IconButton>
-              <IconButton 
-                component="a" 
-                href="https://www.instagram.com/kds.electronics" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                size="small" 
+              <IconButton
+                component="a"
+                href="https://www.instagram.com/kds.electronics"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
                 sx={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#8FB6D8', color: '#0F172A' } }}
               >
                 <InstagramIcon fontSize="small" />
@@ -278,11 +290,11 @@ const Footer = () => {
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>DPO Email</Typography>
                   <Typography
                     component="a"
-                    href={`mailto:${officerContact?.email || 'sales@kdselectronics.com'}`}
+                    href={`mailto:${dpoEmail}`}
                     variant="body2"
                     sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
                   >
-                    {officerContact?.email || 'sales@kdselectronics.com'}
+                    {dpoEmail}
                   </Typography>
                 </Box>
               </Box>
@@ -293,11 +305,11 @@ const Footer = () => {
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>DPO Hotline</Typography>
                   <Typography
                     component="a"
-                    href={`tel:${officerContact?.phone || '+919925801333'}`}
+                    href={`tel:${dpoPhone.replace(/\s+/g, '')}`}
                     variant="body2"
                     sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: '#8FB6D8' } }}
                   >
-                    {officerContact?.phone || '+91 99258 01333'}
+                    {dpoPhone}
                   </Typography>
                 </Box>
               </Box>
@@ -306,8 +318,8 @@ const Footer = () => {
                 <LocationIcon sx={{ color: '#8FB6D8', fontSize: 18, mt: 0.2 }} />
                 <Box>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block' }}>Office Address</Typography>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', display: 'block' }}>
-                    {officerContact?.address || 'K&DS Electronic Limited, Mavadi Plot, Rajkot, Gujarat 360004'}
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', display: 'block', lineHeight: 1.4 }}>
+                    {dpoAddress}
                   </Typography>
                 </Box>
               </Box>
@@ -317,17 +329,118 @@ const Footer = () => {
 
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }} />
 
-        {/* 3. Bottom Legal & Copyright Bar */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+        {/* 3. Technology Partner Credits & Payment Bar */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+            mb: 2.5
+          }}
+        >
+          {/* Service Credits: Meilisearch & Razorpay */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, fontSize: '0.68rem', mr: 0.5 }}>
+              Infrastructure
+            </Typography>
+
+            {/* Meilisearch Credit Badge */}
+            <Box
+              component="a"
+              href="https://www.meilisearch.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ultra-fast product search powered by Meilisearch"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.5,
+                py: 0.6,
+                borderRadius: 2,
+                bgcolor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: 'rgba(255, 255, 255, 0.85)',
+                textDecoration: 'none',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 71, 126, 0.12)',
+                  borderColor: '#FF477E',
+                  color: '#ffffff',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 12px rgba(255, 71, 126, 0.2)'
+                }
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 19L8 5H10.5L5.5 19H3Z" fill="#FF477E" />
+                <path d="M9.5 19L14.5 5H17L12 19H9.5Z" fill="#FF5C8A" />
+                <path d="M16 19L21 5H23.5L18.5 19H16Z" fill="#FF7096" />
+              </svg>
+              <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.72rem', letterSpacing: '0.01em' }}>
+                Search by <span style={{ fontWeight: 800, color: '#FF7096' }}>Meilisearch</span>
+              </Typography>
+            </Box>
+
+            {/* Razorpay Credit Badge */}
+            <Box
+              component="a"
+              href="https://razorpay.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Secure PCI-DSS compliant payments powered by Razorpay"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.5,
+                py: 0.6,
+                borderRadius: 2,
+                bgcolor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: 'rgba(255, 255, 255, 0.85)',
+                textDecoration: 'none',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(12, 131, 253, 0.12)',
+                  borderColor: '#0C83FD',
+                  color: '#ffffff',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 12px rgba(12, 131, 253, 0.2)'
+                }
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.4 3L8.8 17.5H16.4L13.2 29L26.8 14.5H19.2L22.4 3Z" fill="#0C83FD" />
+                <path d="M19.2 14.5L22.4 3L16 10.2L13.8 14.5H19.2Z" fill="#0256B3" />
+              </svg>
+              <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.72rem', letterSpacing: '0.01em' }}>
+                Secured by <span style={{ fontWeight: 800, color: '#58A6FF' }}>Razorpay</span>
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Payment Badges */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Chip label="VISA" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, fontSize: '0.7rem' }} />
+            <Chip label="MASTERCARD" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, fontSize: '0.7rem' }} />
+            <Chip label="UPI" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, fontSize: '0.7rem' }} />
+            <Chip label="NET BANKING" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, fontSize: '0.7rem' }} />
+          </Box>
+        </Box>
+
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 2 }} />
+
+        {/* 4. Bottom Legal & Copyright Bar */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
             &copy; {new Date().getFullYear()} KDS Electronics Industrial Supply Ltd. All rights reserved. DPDP Act 2023 Compliant.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Chip label="VISA" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 700 }} />
-            <Chip label="MASTERCARD" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 700 }} />
-            <Chip label="RAZORPAY" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 700 }} />
-            <Chip label="UPI" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 700 }} />
-          </Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
+            ISO 9001:2015 &amp; ISO 27001 Certified Enterprise Supply Chain
+          </Typography>
         </Box>
       </Container>
     </Box>

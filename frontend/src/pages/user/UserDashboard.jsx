@@ -6,7 +6,6 @@ import {
 import { 
   ShoppingBag as ShoppingBagIcon,
   LocalShipping as LocalShippingIcon,
-  Favorite as FavoriteIcon,
   LocationOn as LocationIcon,
   Person as PersonIcon,
   Description as QuoteIcon,
@@ -120,7 +119,7 @@ const UserDashboard = () => {
 
       {/* 2. ACCOUNT QUICK STATS HUB */}
       <Grid container spacing={3}>
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Paper 
             component={RouterLink}
             to="/user/orders"
@@ -142,29 +141,7 @@ const UserDashboard = () => {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <Paper 
-            component={RouterLink}
-            to="/user/favorites"
-            sx={{ 
-              p: 3, 
-              borderRadius: 3, 
-              border: '1px solid #E2ECF5',
-              textDecoration: 'none',
-              display: 'block',
-              transition: 'all 0.2s ease',
-              '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)' }
-            }}
-          >
-            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#FEE2E2', color: 'error.main', width: 'fit-content', mb: 1.5 }}>
-              <FavoriteIcon />
-            </Box>
-            <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main' }}>Wishlist</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>Saved Products</Typography>
-          </Paper>
-        </Grid>
-
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Paper 
             component={RouterLink}
             to="/user/addresses"
@@ -186,7 +163,7 @@ const UserDashboard = () => {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Paper 
             component={RouterLink}
             to="/user/quotations"

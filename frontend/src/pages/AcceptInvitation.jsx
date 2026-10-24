@@ -95,13 +95,33 @@ const AcceptInvitation = () => {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
       <Paper elevation={0} sx={{ p: 4, width: '100%', maxWidth: 520, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main', mb: 1 }}>
             Accept Admin Invitation
           </Typography>
           <Typography color="text.secondary">
-            Set up your staff account for <strong>{invitation?.email}</strong>
+            Set up your administrative staff account for <strong>{invitation?.email}</strong>
           </Typography>
+          {invitation?.roleNames && invitation.roleNames.length > 0 && (
+            <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 0.8 }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, mr: 0.5 }}>
+                Assigned Roles:
+              </Typography>
+              {invitation.roleNames.map((rn, idx) => (
+                <span key={idx} style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  padding: '2px 10px',
+                  borderRadius: '999px',
+                  backgroundColor: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe'
+                }}>
+                  {rn}
+                </span>
+              ))}
+            </Box>
+          )}
         </Box>
 
         <form onSubmit={handleSubmit}>

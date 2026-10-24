@@ -8,6 +8,7 @@ import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import notification from '../utils/notification';
 import { authService, privacyService } from '../services/apiServices';
 import BrandLogo from '../components/common/BrandLogo';
+import { useAuth } from '../context/AuthContext';
 
 const schema = yup.object({
   fullName: yup.string().required('Full Name is required'),
@@ -32,6 +33,7 @@ const Register = () => {
   const [regType, setRegType] = useState('individual');
   const [loading, setLoading] = useState(false);
   const [noticeVersion, setNoticeVersion] = useState('draft-0');
+  const { register: registerContext } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -84,7 +86,12 @@ const Register = () => {
         noticeVersion: currentVersion,
       };
 
-      const res = await authService.register(payload);
+      // Register user and set up active session
+      if (registerContext) {
+        await registerContext(payload);
+      } else {
+        await authService.register(payload);
+      }
 
       // If user selected optional marketing consent, trigger separate privacy consent endpoint
       if (data.marketingConsent) {
@@ -95,10 +102,9 @@ const Register = () => {
         }
       }
       
-      notification.success('Registration successful! Please login.');
-      const from = location.state?.from || new URLSearchParams(location.search).get('redirect');
-      const loginPath = from ? `/login?redirect=${encodeURIComponent(from)}` : '/login';
-      navigate(loginPath, { state: { from } });
+      notification.success('Account created! An 8-digit verification code has been emailed to you.');
+      const from = location.state?.from || new URLSearchParams(location.search).get('redirect') || '/';
+      navigate(`/verify-email?redirect=${encodeURIComponent(from)}`, { state: { redirect: from } });
     } catch (error) {
       console.error('Registration failed:', error);
       const resData = error?.response?.data;

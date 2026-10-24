@@ -106,6 +106,11 @@ const Checkout = () => {
   // ─── Core order placement ───────────────────────────────────────────────
   const placeOrder = async (overrides) => {
     if (!selectedAddress) return;
+    if (user && user.emailVerified === false) {
+      notification.warning('Email verification is required before placing an order.');
+      navigate('/verify-email', { state: { redirect: '/checkout' } });
+      return;
+    }
     setPlacing(true);
     try {
       const payload = {
@@ -129,6 +134,13 @@ const Checkout = () => {
   const handlePlacementError = (err) => {
     const status = err?.response?.status;
     const data = err?.response?.data;
+
+    // V033: Unverified email tried to place an order (403 EMAIL_NOT_VERIFIED)
+    if (status === 403 && (data?.title === 'EMAIL_NOT_VERIFIED' || data?.detail?.toLowerCase().includes('verify'))) {
+      notification.warning('Please verify your email address before placing your order.');
+      navigate('/verify-email', { state: { redirect: '/checkout' } });
+      return;
+    }
 
     // Delivery GST Guide §6 / §9 503 Delivery rate not configured
     if (status === 503) {
@@ -380,6 +392,25 @@ const Checkout = () => {
       </Box>
 
       <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, bgcolor: '#ffffff', border: '1px solid #D6E4EE', borderRadius: 2, mb: 4 }}>
+        {user && user.emailVerified === false && (
+          <Alert 
+            severity="warning" 
+            sx={{ mb: 4, borderRadius: 2, border: '1px solid #FFEDD5' }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={() => navigate('/verify-email', { state: { redirect: '/checkout' } })}
+                sx={{ fontWeight: 800 }}
+              >
+                Verify Email Now
+              </Button>
+            }
+          >
+            <strong>Email verification required:</strong> Your email address ({user.email}) must be verified before placing an order.
+          </Alert>
+        )}
+
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 5 }}>
           {steps.map((label) => (
             <Step key={label}>

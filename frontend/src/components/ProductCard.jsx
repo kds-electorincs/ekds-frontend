@@ -8,8 +8,6 @@ import {
   Visibility as VisibilityIcon,
   Close as CloseIcon,
   ShoppingCart as ShoppingCartIcon,
-  Favorite as FavoriteFilledIcon,
-  FavoriteBorder as FavoriteIcon,
   ArrowForward as ArrowForwardIcon,
   Memory as MemoryIcon
 } from '@mui/icons-material';
@@ -41,7 +39,6 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addToCartError, setAddToCartError] = useState('');
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [imgLoadError, setImgLoadError] = useState(false);
 
   // Robust field mapping & S3 AWS Image resolution
@@ -83,13 +80,6 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
 
   const handleNavigate = () => {
     navigate(`/product/${product.slug || product.id || product._id}`);
-  };
-
-  const handleWishlistToggle = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
-    notification.success(isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist');
   };
 
   const handleAddToCart = async (e) => {
@@ -273,9 +263,6 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
               </motion.div>
 
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
-                <IconButton size="small" onClick={handleWishlistToggle} color={isWishlisted ? "error" : "default"} sx={{ bgcolor: '#F8FAFC', '&:hover': { bgcolor: '#EDF4FA' } }}>
-                  {isWishlisted ? <FavoriteFilledIcon fontSize="small" /> : <FavoriteIcon fontSize="small" />}
-                </IconButton>
                 <Button size="small" onClick={handleQuickViewClick} sx={{ fontSize: '0.725rem', fontWeight: 800, color: '#243A5E', textTransform: 'none' }}>
                   Quick View
                 </Button>
@@ -320,24 +307,6 @@ const ProductCard = ({ product, viewMode = 'grid', sx = {} }) => {
           ...sx
         }}
       >
-        {/* Wishlist Button */}
-        <IconButton
-          size="small"
-          onClick={handleWishlistToggle}
-          sx={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            zIndex: 2,
-            bgcolor: 'rgba(255,255,255,0.9)',
-            backdropFilter: 'blur(4px)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            color: isWishlisted ? 'error.main' : 'action.active',
-            '&:hover': { bgcolor: '#ffffff', transform: 'scale(1.1)' }
-          }}
-        >
-          {isWishlisted ? <FavoriteFilledIcon fontSize="small" /> : <FavoriteIcon fontSize="small" />}
-        </IconButton>
 
         {/* Media Container */}
         <Box sx={{ position: 'relative', height: 190, bgcolor: '#f8fafc', borderBottom: '1px solid #E2ECF5', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, overflow: 'hidden' }}>

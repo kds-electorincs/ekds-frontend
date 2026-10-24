@@ -16,6 +16,7 @@ import PrivacyPolicy from './pages/PrivacyPolicyPage';
 import PublicGrievanceForm from './pages/PublicGrievanceForm';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import AcceptInvitation from './pages/AcceptInvitation';
 import ProductListing from './pages/ProductListing';
@@ -29,7 +30,6 @@ import OrdersLanding from './pages/OrdersLanding';
 import UserDashboard from './pages/user/UserDashboard';
 import MyOrders from './pages/user/MyOrders';
 import Quotations from './pages/user/Quotations';
-import Favorites from './pages/user/Favorites';
 import Profile from './pages/user/Profile';
 import SavedAddresses from './pages/user/SavedAddresses';
 import EmailPreferences from './pages/user/EmailPreferences';
@@ -56,7 +56,7 @@ import DashboardDiscrepancies from './pages/admin/DashboardDiscrepancies';
 import { useAuth } from './context/AuthContext';
 import { PERMISSIONS } from './constants/permissions';
 import { ROLES } from './constants/roles';
-import { ProtectedRoute } from './components/common/SecurityGuards';
+import { ProtectedRoute, AccessDenied } from './components/common/SecurityGuards';
 
 const ProtectedAdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -65,7 +65,7 @@ const ProtectedAdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
-  const isAdmin = Object.values(ROLES).includes(user.role) || user.role === 'ADMIN' || user.role === 'MANAGER' || user.role === 'STAFF';
+  const isAdmin = user.isSuperAdmin || user.isAdmin || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || Object.values(ROLES).includes(user.role);
   
   if (!isAdmin) {
     return <Navigate to="/" replace />;
@@ -82,7 +82,7 @@ const PermissionRoute = ({ permission, children }) => {
   }
   
   if (permission && !hasPermission(permission)) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <AccessDenied requiredPermission={permission} />;
   }
   
   return children;
@@ -107,6 +107,7 @@ function App() {
           {/* Customer Auth */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
           <Route path="/accept-invite" element={<AcceptInvitation />} />
@@ -128,7 +129,7 @@ function App() {
           <Route path="dashboard" element={<UserDashboard />} />
           <Route path="orders" element={<MyOrders />} />
           <Route path="quotations" element={<Quotations />} />
-          <Route path="favorites" element={<Favorites />} />
+          <Route path="favorites" element={<Navigate to="/user/dashboard" replace />} />
           <Route path="profile" element={<Profile />} />
           <Route path="addresses" element={<SavedAddresses />} />
           <Route path="preferences" element={<EmailPreferences />} />

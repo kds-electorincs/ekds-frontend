@@ -11,7 +11,6 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   AccountCircle as AccountCircleIcon,
   ShoppingCart as ShoppingCartIcon,
-  FavoriteBorder as FavoriteIcon,
   Description as QuoteIcon,
   ExitToApp as ExitToAppIcon,
   Dashboard as DashboardIcon,
@@ -32,6 +31,7 @@ import { categoryPublicService, productService, searchService } from '../../serv
 import { ROLES } from '../../constants/roles';
 import { formatPrice as formatScaledPrice } from '../../utils/priceUtils';
 import BrandLogo from './BrandLogo';
+import EmailVerificationBanner from './EmailVerificationBanner';
 
 const Header = () => {
   const { cartItemCount, toggleCartDrawer } = useCart();
@@ -243,6 +243,9 @@ const Header = () => {
         </Box>
       </Box>
 
+      {/* Email Verification Reminder Banner (V033) */}
+      <EmailVerificationBanner />
+
       {/* 2. Main E-Commerce Header Navigation */}
       <AppBar position="static" sx={{ backgroundColor: '#ffffff', color: 'text.primary', boxShadow: 'none', borderBottom: '1px solid #E2ECF5', px: { xs: 1.5, sm: 3, md: 6 }, py: 1 }}>
         <Toolbar disableGutters sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 1.5, md: 3 }, maxWidth: 1440, mx: 'auto', width: '100%' }}>
@@ -366,13 +369,8 @@ const Header = () => {
             </ClickAwayListener>
           </Box>
 
-          {/* Action Hub: Quotations, Wishlist, Cart & Account */}
+          {/* Action Hub: Cart & Account */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1.5 } }}>
-            <Tooltip title="Saved Favorites">
-              <IconButton component={RouterLink} to={user ? "/user/favorites" : "/login"} sx={{ color: 'primary.main' }} aria-label="view favorites">
-                <FavoriteIcon />
-              </IconButton>
-            </Tooltip>
 
             <Tooltip title="Shopping Cart">
               <IconButton onClick={toggleCartDrawer} sx={{ color: 'primary.main' }} aria-label={`open shopping cart with ${cartItemCount || 0} items`}>

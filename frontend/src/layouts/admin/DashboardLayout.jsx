@@ -48,11 +48,13 @@ const DashboardLayout = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard', permission: PERMISSIONS.VIEW_DASHBOARD },
     { text: 'Categories', icon: <CategoryIcon />, path: '/admin/categories', permission: PERMISSIONS.MANAGE_CATEGORIES },
     { text: 'Products', icon: <InventoryIcon />, path: '/admin/products', permission: PERMISSIONS.MANAGE_PRODUCTS },
+    { text: 'Catalog Config', icon: <SettingsIcon />, path: '/admin/catalog-config', permission: PERMISSIONS.MANAGE_CONFIG },
     { text: 'Orders', icon: <ShoppingCartIcon />, path: '/admin/orders', permission: PERMISSIONS.MANAGE_ORDERS },
     { text: 'Delivery Rates', icon: <LocalShippingIcon />, path: '/admin/delivery-rates', permission: PERMISSIONS.MANAGE_DELIVERY_RATES },
-    { text: 'Privacy & DPDP', icon: <SecurityIcon />, path: '/admin/privacy', permission: PERMISSIONS.VIEW_USERS },
-    { text: 'Staff & RBAC', icon: <SecurityIcon />, path: '/admin/staff', permission: PERMISSIONS.MANAGE_STAFF },
     { text: 'Discrepancies', icon: <WarningIcon />, path: '/admin/discrepancies', permission: PERMISSIONS.MANAGE_DISCREPANCIES },
+    { text: 'Privacy & DPDP', icon: <SecurityIcon />, path: '/admin/privacy', permission: PERMISSIONS.VIEW_USERS },
+    { text: 'Storage Maintenance', icon: <BuildIcon />, path: '/admin/maintenance', permission: PERMISSIONS.MANAGE_MAINTENANCE },
+    { text: 'Staff & RBAC', icon: <SecurityIcon />, path: '/admin/staff', permission: PERMISSIONS.MANAGE_STAFF },
   ];
 
   const menuItems = allMenuItems.filter(item => hasPermission(item.permission));
@@ -60,57 +62,71 @@ const DashboardLayout = () => {
   const drawer = (
     <div>
       <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main' }}>
-          KDS
+        <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '-0.5px' }}>
+          ARCHANA / KDS
         </Typography>
       </Toolbar>
       <Divider />
-      <List sx={{ px: 2, mt: 2 }}>
+      <List sx={{ px: 2, mt: 1, pb: 12 }}>
         {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
           return (
-            <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.8 }}>
               <ListItemButton
                 component={RouterLink}
                 to={item.path}
                 selected={isActive}
                 sx={{
                   borderRadius: 2,
+                  py: 1,
                   '&.Mui-selected': {
                     backgroundColor: 'primary.main',
                     color: 'white',
                     '& .MuiListItemIcon-root': { color: 'white' },
                     '&:hover': { backgroundColor: 'primary.dark' },
                   },
-                  '&:hover': { backgroundColor: 'secondary.light' },
+                  '&:hover': { backgroundColor: 'action.hover' },
                 }}
               >
-                <ListItemIcon sx={{ color: isActive ? 'white' : 'primary.main' }}>
+                <ListItemIcon sx={{ color: isActive ? 'white' : 'primary.main', minWidth: 38 }}>
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText primary={item.text} slotProps={{
-                  primary: { fontWeight: isActive ? 600 : 500 }
+                  primary: { fontWeight: isActive ? 700 : 500, fontSize: '0.9rem' }
                 }} />
               </ListItemButton>
             </ListItem>
           );
         })}
       </List>
-      <Box sx={{ position: 'absolute', bottom: 20, width: '100%', px: 2 }}>
-        <Box sx={{ px: 2, mb: 2 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-            Logged in as:
-          </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-            {user?.name || user?.fullName || 'Admin User'} ({user?.role?.replace('_', ' ')})
+      <Box sx={{ position: 'sticky', bottom: 0, width: '100%', px: 2, py: 2, bgcolor: 'background.paper', borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ px: 1, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.fullName || user?.name || 'Admin User'}
+            </Typography>
+            <span style={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '999px',
+              backgroundColor: user?.isSuperAdmin ? '#fef3c7' : '#e0f2fe',
+              color: user?.isSuperAdmin ? '#92400e' : '#0369a1',
+              border: `1px solid ${user?.isSuperAdmin ? '#fde68a' : '#bae6fd'}`,
+              letterSpacing: '0.04em'
+            }}>
+              {user?.isSuperAdmin ? 'SUPER ADMIN' : 'STAFF ADMIN'}
+            </span>
+          </Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user?.email || 'admin@kds.local'}
           </Typography>
         </Box>
-        <Divider sx={{ mb: 2 }} />
-        <ListItemButton onClick={handleLogout} sx={{ borderRadius: 2, color: 'error.main' }}>
-          <ListItemIcon sx={{ color: 'error.main' }}>
-            <LogoutIcon />
+        <ListItemButton onClick={handleLogout} sx={{ borderRadius: 2, color: 'error.main', py: 0.8 }}>
+          <ListItemIcon sx={{ color: 'error.main', minWidth: 36 }}>
+            <LogoutIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Logout" />
+          <ListItemText primary="Logout" slotProps={{ primary: { fontWeight: 600, fontSize: '0.85rem' } }} />
         </ListItemButton>
       </Box>
     </div>

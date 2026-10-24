@@ -30,7 +30,9 @@ export const authService = {
 export const userService = {
   getProfile: async () => await axiosInstance.get('/users/me'),
   updateProfile: async (userData) => await axiosInstance.put('/users/profile', userData),
-  getFavorites: async () => await axiosInstance.get('/users/me/favorites'),
+  // Email Verification (V033)
+  requestEmailVerification: async () => await axiosInstance.post('/users/me/email-verification/request'),
+  verifyEmail: async (otp) => await axiosInstance.post('/users/me/email-verification/verify', { otp }),
   getQuotations: async () => await axiosInstance.get('/users/me/quotations'),
   getPendingPayments: async () => await axiosInstance.get('/users/me/pending-payments'),
   getOrders: async () => await axiosInstance.get('/users/me/orders'),
@@ -247,6 +249,7 @@ export const adminManagementService = {
   revokeRole: async (userId, roleId) => await axiosInstance.delete(`/admin/admin-management/admins/${userId}/roles/${roleId}`),
 
   getRoles: async () => await axiosInstance.get('/admin/admin-management/roles'),
+  getRole: async (id) => await axiosInstance.get(`/admin/admin-management/roles/${id}`),
   createRole: async (roleData) => await axiosInstance.post('/admin/admin-management/roles', roleData),
   updateRole: async (id, roleData) => await axiosInstance.patch(`/admin/admin-management/roles/${id}`, roleData),
   deleteRole: async (id) => await axiosInstance.delete(`/admin/admin-management/roles/${id}`),

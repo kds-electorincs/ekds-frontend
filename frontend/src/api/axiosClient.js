@@ -2,9 +2,13 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Create base instance
+const defaultApiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
+  ? 'http://localhost:8080/api'
+  : 'https://d28fla8ecpepqv.cloudfront.net/api';
+
 const baseURL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL)
   || (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_API_BASE_URL || process.env?.VITE_API_BASE_URL))
-  || 'http://localhost:8080/api';
+  || defaultApiUrl;
 
 if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
   console.log('[API Base URL]:', baseURL);

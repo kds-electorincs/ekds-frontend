@@ -19,7 +19,7 @@ import { formatPrice as formatScaledPrice } from '../utils/priceUtils';
 import { productPublicService } from '../services/apiServices';
 import notification from '../utils/notification';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
 
 const resolveS3ImageUrl = (product) => {
   if (!product) return null;

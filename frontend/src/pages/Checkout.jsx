@@ -15,7 +15,7 @@ import { formatTotal, formatPaisaToRupee } from '../utils/priceUtils';
 import { orderService, userService, cartService } from '../services/apiServices';
 import { GST_STATES } from '../constants/gstStates';
 
-const CDN_BASE = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_CDN_BASE_URL) || 'https://d3qrireo7rmkke.cloudfront.net';
+const CDN_BASE = (typeof import.meta !== 'undefined' && (import.meta?.env?.CDN_BASE_URL || import.meta?.env?.VITE_CDN_BASE_URL)) || '';
 
 const steps = ['Corporate Shipping Destination', 'Order Verification & Terms', 'Gateway Authorization'];
 

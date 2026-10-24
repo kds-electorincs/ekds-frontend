@@ -26,7 +26,7 @@ const categorySchema = yup.object().shape({
   heroImageKey: yup.string().max(512).nullable(),
 });
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
 
 const DashboardCategories = () => {
   const navigate = useNavigate();

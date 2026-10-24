@@ -9,7 +9,7 @@ import { productPublicService, categoryPublicService } from '../../services/apiS
 import BreadcrumbNavigation from '../../components/user/BreadcrumbNavigation';
 import notification from '../../utils/notification';
 
-const CDN_BASE = import.meta.env?.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env?.CDN_BASE_URL || import.meta.env?.VITE_CDN_BASE_URL || '';
 
 const ProductDetails = () => {
   const { id } = useParams();

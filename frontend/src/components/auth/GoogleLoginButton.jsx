@@ -6,7 +6,7 @@ import { ROLES } from '../../constants/roles';
 import { privacyService } from '../../services/apiServices';
 import notification from '../../utils/notification';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '895892165403-end7d42vrpmecr4ob5oohdnqh1750s0u.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const GoogleLoginButton = ({ text = 'signin_with', noticeVersion: initialNoticeVersion }) => {
   const { loginWithGoogle } = useAuth();

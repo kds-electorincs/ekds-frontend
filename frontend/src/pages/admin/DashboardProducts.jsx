@@ -20,7 +20,7 @@ import useS3Upload from '../../hooks/useS3Upload';
 import { useEffect } from 'react';
 import { productAdminService, categoryAdminService, configAdminService } from '../../services/apiServices';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
 
 const getPrimaryImageUrl = (row) => {
   if (row.images && row.images.length > 0) {

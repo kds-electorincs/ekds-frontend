@@ -25,7 +25,7 @@ import { formatTotal, formatPaisaToRupee } from '../utils/priceUtils';
 import { GST_STATES } from '../constants/gstStates';
 import { userService } from '../services/apiServices';
 
-const CDN_BASE = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_CDN_BASE_URL) || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = (typeof import.meta !== 'undefined' && (import.meta?.env?.CDN_BASE_URL || import.meta?.env?.VITE_CDN_BASE_URL)) || '';
 
 const REASON_UI = {
   PACKAGING_INACTIVE: { label: 'No longer available', color: 'error' },

@@ -3,7 +3,7 @@ import { Close, Delete, ShoppingCart, ArrowForward, Warning as WarningIcon } fro
 import { useCart } from '../../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
 
 const CartDrawer = () => {
   const {

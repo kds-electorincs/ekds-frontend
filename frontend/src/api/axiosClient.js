@@ -2,8 +2,8 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Create base instance
-const baseURL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL)
-  || (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_API_BASE_URL || process.env?.VITE_API_BASE_URL))
+const baseURL = (typeof import.meta !== 'undefined' && (import.meta?.env?.API_BASE_URL || import.meta?.env?.VITE_API_BASE_URL))
+  || (typeof process !== 'undefined' && (process.env?.API_BASE_URL || process.env?.NEXT_PUBLIC_API_BASE_URL || process.env?.VITE_API_BASE_URL))
   || '/api';
 
 if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {

@@ -30,7 +30,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import ProductCard from '../components/ProductCard';
 import { formatPrice, getTierForQty, CONTACT_US } from '../utils/priceUtils';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
 
 const ProductDetails = () => {
   const { id } = useParams();

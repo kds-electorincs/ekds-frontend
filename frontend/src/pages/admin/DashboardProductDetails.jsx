@@ -17,7 +17,7 @@ import { configAdminService, productAdminService, categoryAdminService, attribut
 import useS3Upload from '../../hooks/useS3Upload';
 import { validateUploadFile } from '../../utils/uploadValidation';
 
-const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
 
 const DashboardProductDetails = () => {
   const { id } = useParams();

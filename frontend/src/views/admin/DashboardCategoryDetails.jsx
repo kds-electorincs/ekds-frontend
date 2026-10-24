@@ -50,7 +50,7 @@ const attributeSchema = yup.object().shape({
   ).nullable()
 });
 
-const CDN_BASE = import.meta.env?.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+const CDN_BASE = import.meta.env?.CDN_BASE_URL || import.meta.env?.VITE_CDN_BASE_URL || '';
 
 const DashboardCategoryDetails = () => {
   const { id } = useParams();

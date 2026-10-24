@@ -24,7 +24,7 @@ const ImageUpload = ({
 
   // If we already have a value (S3 key), we should display it.
   // We use the CDN base from env variables to build the full URL.
-  const CDN_BASE = import.meta.env.VITE_CDN_BASE_URL || 'https://d1sswqar085ync.cloudfront.net';
+  const CDN_BASE = import.meta.env.CDN_BASE_URL || import.meta.env.VITE_CDN_BASE_URL || '';
   
   useEffect(() => {
     if (value && !value.startsWith('blob:')) {
